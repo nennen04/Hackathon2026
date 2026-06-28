@@ -112,10 +112,10 @@ const STEPS: StepMeta[] = [
   },
   {
     key: 'intent',
-    title: 'AIが意図を整理しました',
-    label: '意図を確認',
+    title: 'おすすめプランができました',
+    label: 'プランを確認',
     rightAction: 'help',
-    helpMessage: 'CO₂排出量や体力消耗度はAIによる推定値です。',
+    helpMessage: 'CO₂排出量や体力消耗度は、現在選択中のプランに基づく推定値です。',
   },
   {
     key: 'compare',
@@ -532,6 +532,7 @@ function App() {
               {currentStep.key === 'intent' && (
                 <IntentExtraction
                   intent={travelIntent || TRAVEL_INTENT}
+                  plan={selectedPlan}
                   departureLocation={departureLocation}
                   onSubmit={() => goTo(4)}
                 />
