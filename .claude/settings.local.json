@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(npm create *)",
+      "Bash(mv temp-app/.gitignore temp-app/.oxlintrc.json temp-app/index.html temp-app/package.json temp-app/public temp-app/README.md temp-app/src temp-app/tsconfig.app.json temp-app/tsconfig.json temp-app/tsconfig.node.json temp-app/vite.config.ts .)",
+      "Bash(rmdir temp-app *)",
+      "Bash(npm install *)",
+      "Bash(rm -f src/assets/hero.png src/assets/react.svg src/assets/vite.svg)",
+      "Bash(rmdir src/assets)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(chromium-cli --help)",
+      "Bash(npm ls *)",
+      "Bash(npx --yes playwright --version)",
+      "Read(//c/Users/Dell/AppData/Local/**)",
+      "Bash(timeout 90 npx --yes playwright install chromium)",
+      "Bash(node \"C:/Users/Dell/AppData/Local/Temp/claude/f--08coding-Hackathon2026/b43642d4-38a6-4571-8dcf-9c5460cabd2c/scratchpad/verify.mjs\")",
+      "Bash(npm init *)",
+      "Bash(node verify.mjs)",
+      "Bash(node verify2.mjs)",
+      "Bash(pkill -f \"vite --port 5180\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 23792 //F)",
+      "Bash(curl -sf http://localhost:5181/)",
+      "Bash(node verify3.mjs)",
+      "Bash(taskkill //PID 43184 //F)",
+      "Bash(node verify4.mjs)",
+      "Bash(taskkill //PID 5384 //F)",
+      "Bash(node debug-overflow.mjs)",
+      "Bash(node debug-overflow2.mjs)",
+      "Bash(node verify5.mjs)",
+      "Bash(taskkill //PID 31760 //F)",
+      "Bash(node verify-features.mjs)",
+      "Bash(node verify-features2.mjs)",
+      "Bash(node verify-regression.mjs)",
+      "Bash(taskkill //PID 28604 //F)"
+    ]
+  }
+}
