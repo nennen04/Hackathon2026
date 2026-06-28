@@ -64,14 +64,14 @@ export async function extractTravelIntent(
 
 const REFINE_CANDIDATE_PROMPT = `
 あなたは旅行AIエージェント「Ecotrip」です。
-ユーザーが選んだ「体験したいこと（タグ）」と自由メモをもとに、元の目的地と近場のエコ代替地を2つ提案し直してください。
+ユーザーが選んだ「体験したいこと（タグ）」と自由メモをもとに、元の目的地と近場のエコ代替地を2-3つ提案し直してください。
 
 ポイント:
 - ユーザーが選んだ体験タグを必ず考慮し、その体験ができる近場の目的地を選ぶこと
 - 出発地から物理的に近い（同等かより近い）場所を選ぶこと
 - co2SavingPercent は移動距離の差から推定した目安の削減率（0〜80%の整数）
 
-返却フォーマット（JSONのみ、他のテキスト不要）:
+返却フォーマット（JSONのみ、他のテキスト不要、3つの場合は拡張）:
 {
   "candidates": [
     {
@@ -107,14 +107,14 @@ export async function refineDestinationCandidates(
 ): Promise<DestinationCandidate[]> {
   const userMsg = `
 元の目的地: "${originalDestination}"
-出発地: ${conditions.departureLabel || '未設定'}
-ユーザーが選んだ体験タグ: [${selectedTags.join(', ')}]
-自由メモ: "${freeNote || 'なし'}"
+出発地: ${conditions.departureLabel || "未設定"}
+ユーザーが選んだ体験タグ: [${selectedTags.join(", ")}]
+自由メモ: "${freeNote || "なし"}"
 `;
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: REFINE_CANDIDATE_PROMPT },
-    { role: 'user', content: userMsg },
+    { role: "system", content: REFINE_CANDIDATE_PROMPT },
+    { role: "user", content: userMsg },
   ];
 
   const res = await chatJson<{ candidates: DestinationCandidate[] }>(messages);
