@@ -4,12 +4,12 @@
 
 const ENDPOINT = import.meta.env.VITE_AZURE_OPENAI_ENDPOINT as string | undefined
 const API_KEY = import.meta.env.VITE_AZURE_OPENAI_API_KEY as string | undefined
-const DEPLOYMENT_MINI = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT_MINI as string | undefined
+const DEPLOYMENT = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT as string | undefined
 const API_VERSION =
   (import.meta.env.VITE_AZURE_OPENAI_API_VERSION as string | undefined) ?? '2024-10-21'
 
 export function isLlmConfigured(): boolean {
-  return Boolean(ENDPOINT && API_KEY && DEPLOYMENT_MINI)
+  return Boolean(ENDPOINT && API_KEY && DEPLOYMENT)
 }
 
 export interface ChatMessage {
@@ -23,7 +23,7 @@ export interface ChatMessage {
  */
 export async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
   if (!isLlmConfigured()) throw new Error('Azure OpenAI is not configured')
-  const url = `${ENDPOINT}/openai/deployments/${DEPLOYMENT_MINI}/chat/completions?api-version=${API_VERSION}`
+  const url = `${ENDPOINT}/openai/deployments/${DEPLOYMENT}/chat/completions?api-version=${API_VERSION}`
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'api-key': API_KEY as string },
