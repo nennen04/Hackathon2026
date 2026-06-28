@@ -76,6 +76,12 @@ function PlanCard({
       >
         詳細を見る
       </button>
+      <button
+        className={selected ? 'plan-card__select-btn plan-card__select-btn--active' : 'plan-card__select-btn'}
+        onClick={onSelect}
+      >
+        {selected ? '✓ 選択中' : 'このプランにする'}
+      </button>
     </div>
   );
 }

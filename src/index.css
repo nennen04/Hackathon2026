@@ -1046,6 +1046,34 @@ h1, h2, h3, h4, p {
   background: var(--color-primary-soft);
 }
 
+.plan-card--selected {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.plan-card__select-btn {
+  margin-top: 8px;
+  width: 100%;
+  border: 1.5px solid var(--color-primary);
+  background: #fff;
+  color: var(--color-primary-dark);
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.plan-card__select-btn--active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.plan-card__select-btn:not(.plan-card__select-btn--active):hover {
+  background: var(--color-primary-soft);
+}
+
 .compare-table-wrap {
   overflow-x: auto;
   overflow-y: hidden;
