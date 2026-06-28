@@ -18,8 +18,8 @@ function DetailedSchedule({ plan, departureLocation, footer }: DetailedScheduleP
       <p className="schedule-title">{plan.name}</p>
 
       <div className="timeline">
-        {plan.schedule.map((item) => (
-          <div className="timeline-item" key={item.time}>
+        {plan.schedule.map((item, idx) => (
+          <div className="timeline-item" key={idx}>
             <span className="timeline-item__dot">{item.icon ?? '📍'}</span>
             <p className="timeline-item__time">{item.time}</p>
             <p className="timeline-item__title">{item.title}</p>
