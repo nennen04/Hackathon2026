@@ -288,5 +288,5 @@ export const VISIT_HISTORY: VisitHistoryItem[] = [
 export const FEEDBACK_HISTORY_NOTE =
   '訪問済みルートは記録され、次回以降に同じルートが繰り返し推薦されないようにします。';
 
-export const FEEDBACK_TOAST_MESSAGE =
-  'フィードバックを保存しました。次回の提案に反映します。';
+export const FEEDBACK_SUCCESS_MESSAGE =
+  'フィードバックを保存しました。\n次回の提案に反映します。\nホーム画面に戻ります。';

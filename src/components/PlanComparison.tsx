@@ -5,7 +5,7 @@ interface PlanComparisonProps {
   plans: TravelPlan[];
   departureLocation: string;
   selectedPlanId: string | null;
-  onSelectPlan: (plan: TravelPlan) => void;
+  onSelectPlan: (planId: string) => void;
   onViewDetail: (plan: TravelPlan) => void;
   onSubmit: () => void;
 }
@@ -22,10 +22,12 @@ const ROWS: Array<{
   { label: 'リラックス度', render: (p) => `${p.relaxScore}/5` },
 ];
 
-function planCardClassName(plan: TravelPlan) {
-  if (plan.category === 'recommended') return 'plan-card plan-card--recommended';
-  if (plan.category === 'original') return 'plan-card plan-card--original';
-  return 'plan-card';
+function planCardClassName(plan: TravelPlan, selected: boolean) {
+  const classes = ['plan-card'];
+  if (plan.category === 'recommended') classes.push('plan-card--recommended');
+  if (plan.category === 'original') classes.push('plan-card--original');
+  if (selected) classes.push('plan-card--selected');
+  return classes.join(' ');
 }
 
 function PlanCard({
@@ -40,7 +42,20 @@ function PlanCard({
   onViewDetail: () => void;
 }) {
   return (
-    <div className={`${planCardClassName(plan)}${selected ? ' plan-card--selected' : ''}`}>
+    <div
+      className={planCardClassName(plan, selected)}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+    >
+      {selected && <span className="plan-card__selected-badge">✓ 選択中</span>}
       {plan.label && <span className="plan-card__badge">{plan.label}</span>}
       <div className="plan-card__emoji">{plan.icon}</div>
       <p className="plan-card__name">{plan.name}</p>
@@ -52,7 +67,13 @@ function PlanCard({
         ))}
       </div>
       <p className="plan-card__transport">移動：{plan.transport}</p>
-      <button className="plan-card__detail-btn" onClick={onViewDetail}>
+      <button
+        className="plan-card__detail-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onViewDetail();
+        }}
+      >
         詳細を見る
       </button>
       <button
@@ -65,7 +86,16 @@ function PlanCard({
   );
 }
 
-function PlanComparison({ plans, departureLocation, selectedPlanId, onSelectPlan, onViewDetail, onSubmit }: PlanComparisonProps) {
+function PlanComparison({
+  plans,
+  departureLocation,
+  selectedPlanId,
+  onSelectPlan,
+  onViewDetail,
+  onSubmit,
+}: PlanComparisonProps) {
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
   return (
     <div>
       <p className="section-title">プランを見比べてみましょう</p>
@@ -78,7 +108,7 @@ function PlanComparison({ plans, departureLocation, selectedPlanId, onSelectPlan
             key={plan.id}
             plan={plan}
             selected={plan.id === selectedPlanId}
-            onSelect={() => onSelectPlan(plan)}
+            onSelect={() => onSelectPlan(plan.id)}
             onViewDetail={() => onViewDetail(plan)}
           />
         ))}
@@ -90,10 +120,8 @@ function PlanComparison({ plans, departureLocation, selectedPlanId, onSelectPlan
             <tr>
               <th>項目</th>
               {plans.map((plan) => (
-                <th
-                  key={plan.id}
-                  className={plan.category === 'recommended' ? 'col--recommended' : undefined}
-                >
+                <th key={plan.id} className={plan.id === selectedPlanId ? 'col--selected' : undefined}>
+                  {plan.id === selectedPlanId ? '✓ ' : ''}
                   {plan.label ?? plan.name}
                 </th>
               ))}
@@ -104,10 +132,7 @@ function PlanComparison({ plans, departureLocation, selectedPlanId, onSelectPlan
               <tr key={row.label}>
                 <td>{row.label}</td>
                 {plans.map((plan) => (
-                  <td
-                    key={plan.id}
-                    className={plan.category === 'recommended' ? 'cell--recommended' : undefined}
-                  >
+                  <td key={plan.id} className={plan.id === selectedPlanId ? 'cell--selected' : undefined}>
                     {row.render(plan)}
                   </td>
                 ))}
@@ -122,8 +147,13 @@ function PlanComparison({ plans, departureLocation, selectedPlanId, onSelectPlan
         <p>{COMPARISON_NOTE}</p>
       </div>
 
-      <button className="primary-button" onClick={onSubmit}>
-        次のステップに進む →
+      <div className="plan-selection-status">
+        <span className="plan-selection-status__label">選択中：</span>
+        <span className="plan-selection-status__value">{selectedPlan ? selectedPlan.name : '未選択'}</span>
+      </div>
+
+      <button className="primary-button" onClick={onSubmit} disabled={!selectedPlanId}>
+        このプランで次へ進む →
       </button>
     </div>
   );

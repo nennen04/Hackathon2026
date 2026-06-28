@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import StepHeader from './components/StepHeader';
 import StatusBar from './components/StatusBar';
 import Toast from './components/Toast';
+import LoadingScreen from './components/LoadingScreen';
+import FeedbackSuccessOverlay from './components/FeedbackSuccessOverlay';
 import NaturalLanguageInput, { extractKeywords } from './components/NaturalLanguageInput';
 import IntentRefinement from './components/IntentRefinement';
 import DestinationSelect from './components/DestinationSelect';
@@ -21,7 +23,7 @@ import {
   DEFAULT_RATINGS,
   DEFAULT_SELECTED_CONDITIONS,
   ECO_ACTIONS,
-  FEEDBACK_TOAST_MESSAGE,
+  FEEDBACK_SUCCESS_MESSAGE,
   KEYWORD_CHIPS,
   ORIGINAL_PLAN,
   RECOMMENDED_PLAN,
@@ -31,6 +33,52 @@ import {
 import type { TravelPlan, TravelIntent } from './types';
 import { generateTravelPlans } from './llm/planner';
 import { extractTravelIntent, refineDestinationCandidates, type ExtractedIntent, type DestinationCandidate } from './llm/intentExtractor';
+
+interface LoadingConfig {
+  title: string;
+  description: string;
+  messages: string[];
+}
+
+const LOADING_CONFIGS: Record<'intent' | 'refine' | 'plans', LoadingConfig> = {
+  intent: {
+    title: 'AIが旅行の希望を読み取っています…',
+    description: '自然言語から目的地・旅行スタイル・こだわり条件を整理しています。',
+    messages: [
+      '希望条件を抽出しています',
+      '移動手段を確認しています',
+      '旅行スタイルを整理しています',
+      'CO₂排出量の推定準備をしています',
+    ],
+  },
+  refine: {
+    title: '代替プランを比較しています…',
+    description: '原案と代替案のCO₂排出量・費用・体力消耗度を比較しています。',
+    messages: [
+      '原案プランを分析しています',
+      '公共交通で行ける候補を探しています',
+      'CO₂排出量を計算しています',
+      '比較結果を整理しています',
+    ],
+  },
+  plans: {
+    title: 'AIが最適な旅行プランを作成中…',
+    description: '目的地への乗り換えルートとCO₂排出量を計算しています。約30秒ほどかかります。',
+    messages: [
+      '条件に近い候補を探しています',
+      '過去の訪問履歴を確認しています',
+      'CO₂が少ない候補を優先しています',
+      '代替プランを整理しています',
+    ],
+  },
+};
+
+// Mock loading duration in ms — kept short for the prototype even though the
+// copy says "約30秒ほどかかります". Progress eases toward 92% over this window
+// and only jumps to 100% once the real (async) work actually resolves.
+const MOCK_LOADING_DURATION_MS = 2000;
+
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 interface StepMeta {
   key: string;
@@ -115,8 +163,44 @@ function App() {
   }, [freeText]);
 
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  
+  const [loadingConfig, setLoadingConfig] = useState<LoadingConfig>(LOADING_CONFIGS.intent);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const loadingTimerRef = useRef<number | null>(null);
+
+  const [feedbackSuccessVisible, setFeedbackSuccessVisible] = useState(false);
+  const feedbackSuccessTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (loadingTimerRef.current !== null) window.clearInterval(loadingTimerRef.current);
+      if (feedbackSuccessTimerRef.current !== null) window.clearTimeout(feedbackSuccessTimerRef.current);
+    };
+  }, []);
+
+  // Eases progress toward 92% over `estimatedMs`; the real async task decides when
+  // it actually finishes via finishLoadingProgress(), so this never blocks on a timer.
+  function startLoadingProgress(estimatedMs: number) {
+    setLoadingProgress(0);
+    const startedAt = Date.now();
+    loadingTimerRef.current = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const ratio = Math.min(0.92, elapsed / estimatedMs);
+      setLoadingProgress(Math.round(ratio * 100));
+    }, 60);
+  }
+
+  function finishLoadingProgress() {
+    stopLoadingProgress();
+    setLoadingProgress(100);
+  }
+
+  function stopLoadingProgress() {
+    if (loadingTimerRef.current !== null) {
+      window.clearInterval(loadingTimerRef.current);
+      loadingTimerRef.current = null;
+    }
+  }
+
   // Departure location shown top-left on Step 1 and referenced across later steps
   const [departureLocation, setDepartureLocation] = useState(DEFAULT_DEPARTURE_LOCATION);
   const [isDepartureSheetOpen, setIsDepartureSheetOpen] = useState(false);
@@ -131,7 +215,10 @@ function App() {
   // Generated plans states
   const [travelIntent, setTravelIntent] = useState<TravelIntent | null>(null);
   const [allPlans, setAllPlans] = useState<TravelPlan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
+  // The plan the user has chosen on "代替プランを比較"; carried through
+  // EcoActionSelection / DetailedSchedule / FeedbackForm. Defaults to the AI-recommended plan.
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(RECOMMENDED_PLAN.id);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [comparisonPlans, setComparisonPlans] = useState<TravelPlan[]>([]);
@@ -168,7 +255,8 @@ function App() {
   // Step 0 -> Step 1 (Fast Intent Extraction)
   async function handleSearchSubmit() {
     setLoading(true);
-    setLoadingMessage('AIが旅行の意図を分析しています...');
+    setLoadingConfig(LOADING_CONFIGS.intent);
+    startLoadingProgress(MOCK_LOADING_DURATION_MS);
     try {
       const conditionsWithDeparture = {
         ...selectedConditions,
@@ -180,11 +268,14 @@ function App() {
       setSelectedDestinationId('original');
       setSelectedTags(extracted.experienceTags);
       setFreeNote('');
+      finishLoadingProgress();
+      await wait(280);
       goTo(1);
     } catch (e) {
       console.error(e);
       flashToast('旅行意図の読み取りに失敗しました。');
     } finally {
+      stopLoadingProgress();
       setLoading(false);
     }
   }
@@ -193,7 +284,8 @@ function App() {
   async function handleRefineSubmit() {
     if (!extractedIntent) return;
     setLoading(true);
-    setLoadingMessage('AIがご希望に合わせた目的地を探しています...');
+    setLoadingConfig(LOADING_CONFIGS.refine);
+    startLoadingProgress(MOCK_LOADING_DURATION_MS);
     try {
       const conditionsWithDeparture = {
         ...selectedConditions,
@@ -207,11 +299,14 @@ function App() {
       );
       setRefinedCandidates(refined);
       setSelectedDestinationId('original');
+      finishLoadingProgress();
+      await wait(280);
       goTo(2);
     } catch (e) {
       console.error(e);
       flashToast('目的地候補の再計算に失敗しました。');
     } finally {
+      stopLoadingProgress();
       setLoading(false);
     }
   }
@@ -219,7 +314,8 @@ function App() {
   // Step 2 -> Step 3 (Full Plan Generation)
   async function handleGeneratePlansSubmit() {
     setLoading(true);
-    setLoadingMessage('AIが最適な旅行プランを作成中...\n目的地への乗り換えルートとCO₂排出量を計算しています。約30秒ほどかかります。');
+    setLoadingConfig(LOADING_CONFIGS.plans);
+    startLoadingProgress(MOCK_LOADING_DURATION_MS);
     try {
       // 選択した候補地をLLMに伝える
       const candidatesToSearch = refinedCandidates.length > 0
@@ -237,24 +333,27 @@ function App() {
       const result = await generateTravelPlans(combinedText, selectedTags, conditionsWithDeparture);
       setTravelIntent(result.intent);
       setAllPlans(result.plans);
-      
+
       const initialCompare = result.plans.filter(
         (p) => p.category === 'original' || p.category === 'recommended'
       );
       setComparisonPlans(initialCompare);
-      
+
       const recommended = result.plans.find((p) => p.category === 'recommended');
       if (recommended) {
         setSelectedPlanId(recommended.id);
       } else if (result.plans.length > 0) {
         setSelectedPlanId(result.plans[0].id);
       }
-      
+
+      finishLoadingProgress();
+      await wait(280);
       goTo(3);
     } catch (e) {
       console.error(e);
       flashToast('プランの作成に失敗しました。時間をおいて再度お試しください。');
     } finally {
+      stopLoadingProgress();
       setLoading(false);
     }
   }
@@ -275,10 +374,16 @@ function App() {
 
   function handleAddToComparison(plan: TravelPlan) {
     setComparisonPlans((prev) => (prev.some((p) => p.id === plan.id) ? prev : [...prev, plan]));
+    // Adding a candidate from the drawer also makes it the active selection,
+    // so the user immediately sees it highlighted back on the comparison page.
+    setSelectedPlanId(plan.id);
+  }
+
+  function handleSelectPlan(planId: string) {
+    setSelectedPlanId(planId);
   }
 
   function handleViewPlanDetail(plan: TravelPlan) {
-    setSelectedPlanId(plan.id);
     setViewingPlan(plan);
   }
 
@@ -292,8 +397,35 @@ function App() {
     goTo(0);
   }
 
+  // Resets the in-progress trip (steps, AI results, eco toggles, etc.) for a fresh
+  // search, while deliberately keeping departureLocation and visit history intact.
+  function resetTripState() {
+    setFreeText(DEFAULT_FREE_TEXT);
+    setSelectedConditions(DEFAULT_SELECTED_CONDITIONS);
+    setExtractedIntent(null);
+    setRefinedCandidates([]);
+    setSelectedDestinationId('original');
+    setSelectedTags([]);
+    setFreeNote('');
+    setTravelIntent(null);
+    setAllPlans([]);
+    setSelectedPlanId(RECOMMENDED_PLAN.id);
+    setComparisonPlans([]);
+    setViewingPlan(null);
+    setIsDrawerOpen(false);
+    setEcoActionStates(initialEcoStates);
+    setFeedbackRatings(DEFAULT_RATINGS);
+    setFeedbackComment(DEFAULT_FEEDBACK_COMMENT);
+    setLoadingProgress(0);
+  }
+
   function handleSubmitFeedback() {
-    flashToast(FEEDBACK_TOAST_MESSAGE);
+    setFeedbackSuccessVisible(true);
+    feedbackSuccessTimerRef.current = window.setTimeout(() => {
+      setFeedbackSuccessVisible(false);
+      resetTripState();
+      goTo(0);
+    }, 1800);
   }
 
   function handleRightAction() {
@@ -304,22 +436,26 @@ function App() {
     }
   }
 
-  const activePlan = allPlans.find((p) => p.id === selectedPlanId) || recommendedPlanFallback();
+  const comparisonPlansList = comparisonPlans.length > 0 ? comparisonPlans : [ORIGINAL_PLAN, RECOMMENDED_PLAN];
 
-  function recommendedPlanFallback(): TravelPlan {
-    if (comparisonPlans.length > 0) {
-      return comparisonPlans.find((p) => p.category === 'recommended') || comparisonPlans[0];
-    }
-    return RECOMMENDED_PLAN;
-  }
+  // The plan actually chosen by the user on the comparison step (falls back to the
+  // recommended plan only if something went wrong, e.g. selectedPlanId points nowhere).
+  const selectedPlan: TravelPlan =
+    comparisonPlansList.find((p) => p.id === selectedPlanId) ?? RECOMMENDED_PLAN;
 
   // Calculate CO2 emission reflecting eco action states
-  const activePlanWithEco = activePlan ? {
-    ...activePlan,
-    co2: Math.max(0.5, Math.round((activePlan.co2 * (1 - (totalEcoPoints * 0.005))) * 10) / 10)
-  } : RECOMMENDED_PLAN;
+  const selectedPlanWithEco: TravelPlan = {
+    ...selectedPlan,
+    co2: Math.max(0.5, Math.round((selectedPlan.co2 * (1 - (totalEcoPoints * 0.005))) * 10) / 10),
+  };
 
   const similarPlansList = allPlans.filter((p) => p.category === 'similar');
+
+  const loadingMessageIndex = Math.min(
+    loadingConfig.messages.length - 1,
+    Math.floor((loadingProgress / 100) * loadingConfig.messages.length),
+  );
+  const currentLoadingMessage = loadingConfig.messages[loadingMessageIndex];
 
   return (
     <div className="app-shell">
@@ -343,32 +479,12 @@ function App() {
           />
 
           {loading ? (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: 400,
-              padding: 24,
-              textAlign: 'center'
-            }}>
-              <div className="loading-spinner" style={{
-                width: 40,
-                height: 40,
-                border: '4px solid rgba(16, 185, 129, 0.1)',
-                borderTop: '4px solid #10b981',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                marginBottom: 16
-              }} />
-              <style>{`
-                @keyframes spin {
-                  0% { transform: rotate(0deg); }
-                  100% { transform: rotate(360deg); }
-                }
-              `}</style>
-              <p style={{ fontWeight: 'bold', color: '#111827', whiteSpace: 'pre-line' }}>{loadingMessage}</p>
-            </div>
+            <LoadingScreen
+              title={loadingConfig.title}
+              description={loadingConfig.description}
+              progress={loadingProgress}
+              message={currentLoadingMessage}
+            />
           ) : (
             <>
               {currentStep.key === 'input' && (
@@ -418,17 +534,24 @@ function App() {
 
               {currentStep.key === 'compare' && (
                 <PlanComparison
-                  plans={comparisonPlans.length > 0 ? comparisonPlans : [ORIGINAL_PLAN, RECOMMENDED_PLAN]}
+                  plans={comparisonPlansList}
                   departureLocation={departureLocation}
                   selectedPlanId={selectedPlanId}
-                  onSelectPlan={(plan) => setSelectedPlanId(plan.id)}
+                  onSelectPlan={handleSelectPlan}
                   onViewDetail={handleViewPlanDetail}
-                  onSubmit={() => goTo(5)}
+                  onSubmit={() => {
+                    if (!selectedPlanId) {
+                      flashToast('プランを選択してください');
+                      return;
+                    }
+                    goTo(5);
+                  }}
                 />
               )}
 
               {currentStep.key === 'eco' && (
                 <EcoActionSelection
+                  planName={selectedPlan.name}
                   actionStates={ecoActionStates}
                   onToggle={toggleEcoAction}
                   totalPoints={totalEcoPoints}
@@ -438,7 +561,7 @@ function App() {
 
               {currentStep.key === 'schedule' && (
                 <DetailedSchedule
-                  plan={activePlanWithEco}
+                  plan={selectedPlanWithEco}
                   departureLocation={departureLocation}
                   footer={
                     <button className="primary-button" onClick={() => goTo(7)}>
@@ -450,6 +573,7 @@ function App() {
 
               {currentStep.key === 'feedback' && (
                 <FeedbackForm
+                  planName={selectedPlan.name}
                   ratings={feedbackRatings}
                   onRatingChange={(id, value) =>
                     setFeedbackRatings((prev) => ({ ...prev, [id]: value }))
@@ -485,6 +609,8 @@ function App() {
         />
 
         {toastMessage && <Toast message={toastMessage} />}
+
+        <FeedbackSuccessOverlay open={feedbackSuccessVisible} message={FEEDBACK_SUCCESS_MESSAGE} />
       </div>
     </div>
   );
