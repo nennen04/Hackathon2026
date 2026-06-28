@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import StepHeader from './components/StepHeader';
 import StatusBar from './components/StatusBar';
 import Toast from './components/Toast';
-import NaturalLanguageInput from './components/NaturalLanguageInput';
+import NaturalLanguageInput, { extractKeywords } from './components/NaturalLanguageInput';
 import IntentExtraction from './components/IntentExtraction';
 import PlanComparison from './components/PlanComparison';
 import SimilarPlanDrawer from './components/SimilarPlanDrawer';
@@ -23,7 +23,8 @@ import {
   SIMILAR_PLANS,
   TRAVEL_INTENT,
 } from './mockData';
-import type { TravelPlan } from './types';
+import type { TravelPlan, TravelIntent } from './types';
+import { generateTravelPlans } from './llm/planner';
 
 interface StepMeta {
   key: string;
@@ -89,11 +90,17 @@ function App() {
     DEFAULT_SELECTED_CONDITIONS,
   );
 
+  useEffect(() => {
+    setSelectedKeywords(extractKeywords(freeText));
+  }, [freeText]);
+
+  const [loading, setLoading] = useState(false);
+  const [travelIntent, setTravelIntent] = useState<TravelIntent | null>(null);
+  const [allPlans, setAllPlans] = useState<TravelPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [comparisonPlans, setComparisonPlans] = useState<TravelPlan[]>([
-    ORIGINAL_PLAN,
-    RECOMMENDED_PLAN,
-  ]);
+  const [comparisonPlans, setComparisonPlans] = useState<TravelPlan[]>([]);
   const [viewingPlan, setViewingPlan] = useState<TravelPlan | null>(null);
 
   const [ecoActionStates, setEcoActionStates] = useState<Record<string, boolean>>(initialEcoStates);
@@ -124,6 +131,34 @@ function App() {
     );
   }
 
+  async function handleSearchSubmit() {
+    setLoading(true);
+    try {
+      const result = await generateTravelPlans(freeText, selectedKeywords, selectedConditions);
+      setTravelIntent(result.intent);
+      setAllPlans(result.plans);
+      
+      const initialCompare = result.plans.filter(
+        (p) => p.category === 'original' || p.category === 'recommended'
+      );
+      setComparisonPlans(initialCompare);
+      
+      const recommended = result.plans.find((p) => p.category === 'recommended');
+      if (recommended) {
+        setSelectedPlanId(recommended.id);
+      } else if (result.plans.length > 0) {
+        setSelectedPlanId(result.plans[0].id);
+      }
+      
+      goTo(1);
+    } catch (e) {
+      console.error(e);
+      flashToast('プランの作成に失敗しました。時間をおいて再度お試しください。');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function selectCondition(groupId: string, optionId: string) {
     setSelectedConditions((prev) => ({ ...prev, [groupId]: optionId }));
   }
@@ -142,6 +177,7 @@ function App() {
   }
 
   function handleViewPlanDetail(plan: TravelPlan) {
+    setSelectedPlanId(plan.id);
     setViewingPlan(plan);
   }
 
@@ -166,6 +202,23 @@ function App() {
     }
   }
 
+  const activePlan = allPlans.find((p) => p.id === selectedPlanId) || recommendedPlanFallback();
+
+  function recommendedPlanFallback(): TravelPlan {
+    if (comparisonPlans.length > 0) {
+      return comparisonPlans.find((p) => p.category === 'recommended') || comparisonPlans[0];
+    }
+    return RECOMMENDED_PLAN;
+  }
+
+  // エコアクションの選択状況を反映させたCO2排出量を算出する
+  const activePlanWithEco = activePlan ? {
+    ...activePlan,
+    co2: Math.max(0.5, Math.round((activePlan.co2 * (1 - (totalEcoPoints * 0.005))) * 10) / 10)
+  } : RECOMMENDED_PLAN;
+
+  const similarPlansList = allPlans.filter((p) => p.category === 'similar');
+
   return (
     <div className="app-shell">
       <div className="phone-frame">
@@ -181,67 +234,101 @@ function App() {
             onRightActionClick={handleRightAction}
           />
 
-          {currentStep.key === 'input' && (
-            <NaturalLanguageInput
-              freeText={freeText}
-              onFreeTextChange={setFreeText}
-              selectedKeywords={selectedKeywords}
-              onToggleKeyword={toggleKeyword}
-              selectedConditions={selectedConditions}
-              onSelectCondition={selectCondition}
-              onSubmit={() => goTo(1)}
-            />
-          )}
+          {loading ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 400,
+              padding: 24,
+              textAlign: 'center'
+            }}>
+              <div className="loading-spinner" style={{
+                width: 40,
+                height: 40,
+                border: '4px solid rgba(16, 185, 129, 0.1)',
+                borderTop: '4px solid #10b981',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                marginBottom: 16
+              }} />
+              <style>{`
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              `}</style>
+              <p style={{ fontWeight: 'bold', color: '#111827' }}>AIが旅行プランを作成中...</p>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 8 }}>
+                最適な移動ルートとCO₂排出量を計算しています。約30秒ほどかかります。
+              </p>
+            </div>
+          ) : (
+            <>
+              {currentStep.key === 'input' && (
+                <NaturalLanguageInput
+                  freeText={freeText}
+                  onFreeTextChange={setFreeText}
+                  selectedKeywords={selectedKeywords}
+                  onToggleKeyword={toggleKeyword}
+                  selectedConditions={selectedConditions}
+                  onSelectCondition={selectCondition}
+                  onSubmit={handleSearchSubmit}
+                />
+              )}
 
-          {currentStep.key === 'intent' && (
-            <IntentExtraction intent={TRAVEL_INTENT} onSubmit={() => goTo(2)} />
-          )}
+              {currentStep.key === 'intent' && (
+                <IntentExtraction intent={travelIntent || TRAVEL_INTENT} onSubmit={() => goTo(2)} />
+              )}
 
-          {currentStep.key === 'compare' && (
-            <PlanComparison
-              plans={comparisonPlans}
-              onViewDetail={handleViewPlanDetail}
-              onSubmit={() => goTo(3)}
-            />
-          )}
+              {currentStep.key === 'compare' && (
+                <PlanComparison
+                  plans={comparisonPlans.length > 0 ? comparisonPlans : [ORIGINAL_PLAN, RECOMMENDED_PLAN]}
+                  onViewDetail={handleViewPlanDetail}
+                  onSubmit={() => goTo(3)}
+                />
+              )}
 
-          {currentStep.key === 'eco' && (
-            <EcoActionSelection
-              actionStates={ecoActionStates}
-              onToggle={toggleEcoAction}
-              totalPoints={totalEcoPoints}
-              onSubmit={() => goTo(4)}
-            />
-          )}
+              {currentStep.key === 'eco' && (
+                <EcoActionSelection
+                  actionStates={ecoActionStates}
+                  onToggle={toggleEcoAction}
+                  totalPoints={totalEcoPoints}
+                  onSubmit={() => goTo(4)}
+                />
+              )}
 
-          {currentStep.key === 'schedule' && (
-            <DetailedSchedule
-              plan={RECOMMENDED_PLAN}
-              footer={
-                <button className="primary-button" onClick={() => goTo(5)}>
-                  旅行後フィードバックへ
-                </button>
-              }
-            />
-          )}
+              {currentStep.key === 'schedule' && (
+                <DetailedSchedule
+                  plan={activePlanWithEco}
+                  footer={
+                    <button className="primary-button" onClick={() => goTo(5)}>
+                      旅行後フィードバックへ
+                    </button>
+                  }
+                />
+              )}
 
-          {currentStep.key === 'feedback' && (
-            <FeedbackForm
-              ratings={feedbackRatings}
-              onRatingChange={(id, value) =>
-                setFeedbackRatings((prev) => ({ ...prev, [id]: value }))
-              }
-              comment={feedbackComment}
-              onCommentChange={setFeedbackComment}
-              onSubmit={handleSubmitFeedback}
-            />
+              {currentStep.key === 'feedback' && (
+                <FeedbackForm
+                  ratings={feedbackRatings}
+                  onRatingChange={(id, value) =>
+                    setFeedbackRatings((prev) => ({ ...prev, [id]: value }))
+                  }
+                  comment={feedbackComment}
+                  onCommentChange={setFeedbackComment}
+                  onSubmit={handleSubmitFeedback}
+                />
+              )}
+            </>
           )}
         </div>
 
         <SimilarPlanDrawer
           open={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
-          plans={SIMILAR_PLANS}
+          plans={similarPlansList.length > 0 ? similarPlansList : SIMILAR_PLANS}
           addedPlanIds={new Set(comparisonPlans.map((p) => p.id))}
           onAddToComparison={handleAddToComparison}
           onChangeConditions={handleChangeConditions}

@@ -12,6 +12,48 @@ interface NaturalLanguageInputProps {
 
 const MAX_LENGTH = 300;
 
+const KEYWORD_PRESETS = [
+  'レンタカー', 'ドライブ', '電車', 'バス', '新幹線', '飛行機', '徒歩',
+  '伊豆', '熱海', '三浦', '鎌倉', '日光', '箱根', '京都', '大阪', '江の島', '奥多摩', '佐原',
+  '海鮮', 'グルメ', '温泉', '海', '山', '川', '自然', 'ハイキング', 'のんびり', '歴史', '神社', '寺', '大仏', 'カフェ'
+];
+
+export function extractKeywords(text: string): string[] {
+  const matched = KEYWORD_PRESETS.filter((kw) => text.includes(kw));
+
+  // 漢字の熟語（2〜4文字）とカタカナ語（2〜6文字）を正規表現で抽出
+  const kanjiRegex = /[一-龠]{2,4}/g;
+  const katakanaRegex = /[ァ-ヴー]{2,6}/g;
+
+  const exclusions = new Set([
+    '希望', '予定', '出発', '到着', '旅行', '計画', '一緒', '今回', '前回', '場所', '自分', '家族', '友達', '夫婦'
+  ]);
+
+  let match;
+  while ((match = kanjiRegex.exec(text)) !== null) {
+    const word = match[0];
+    if (!exclusions.has(word) && word.length >= 2) {
+      matched.push(word);
+    }
+  }
+  while ((match = katakanaRegex.exec(text)) !== null) {
+    const word = match[0];
+    if (!exclusions.has(word) && word.length >= 2) {
+      matched.push(word);
+    }
+  }
+
+  // 特定の類義語・表現のゆらぎをキーワードへマッピング
+  if (text.includes('子供') || text.includes('子ども') || text.includes('子連れ')) {
+    matched.push('子供');
+  }
+  if (text.includes('だらだら') || text.includes('のんびり') || text.includes('ゆったり')) {
+    matched.push('のんびり');
+  }
+
+  return Array.from(new Set(matched));
+}
+
 function NaturalLanguageInput({
   freeText,
   onFreeTextChange,
@@ -21,6 +63,9 @@ function NaturalLanguageInput({
   onSelectCondition,
   onSubmit,
 }: NaturalLanguageInputProps) {
+  const matchedPresets = extractKeywords(freeText);
+  const availableKeywords = matchedPresets.length > 0 ? matchedPresets : KEYWORD_CHIPS;
+
   return (
     <div>
       <p className="section-title">どんな旅にしたいですか？</p>
@@ -43,7 +88,7 @@ function NaturalLanguageInput({
 
       <p className="section-title">キーワード</p>
       <div className="nli-chip-row">
-        {KEYWORD_CHIPS.map((keyword) => (
+        {availableKeywords.map((keyword) => (
           <button
             key={keyword}
             className={
