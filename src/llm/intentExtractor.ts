@@ -5,6 +5,8 @@ export interface DestinationCandidate {
   name: string;
   isAlternative: boolean;
   co2SavingPercent: number;
+  /** 移動時間短縮により増える現地滞在時間の概算（時間）。元の目的地は0。 */
+  extraStayHours: number;
   reason: string;
 }
 
@@ -70,6 +72,7 @@ const REFINE_CANDIDATE_PROMPT = `
 - ユーザーが選んだ体験タグを必ず考慮し、その体験ができる近場の目的地を選ぶこと
 - 出発地から物理的に近い（同等かより近い）場所を選ぶこと
 - co2SavingPercent は移動距離の差から推定した目安の削減率（0〜80%の整数）
+- extraStayHours は、元の目的地より移動時間が短くなる分だけ増える現地滞在時間の概算（往復で浮く時間、0〜8の数値・0.5刻み目安）。元の目的地は必ず0にすること。近いほど大きくする。
 
 返却フォーマット（JSONのみ、他のテキスト不要、3つの場合は拡張）:
 {
@@ -79,6 +82,7 @@ const REFINE_CANDIDATE_PROMPT = `
       "name": "元の目的地名",
       "isAlternative": false,
       "co2SavingPercent": 0,
+      "extraStayHours": 0,
       "reason": "ユーザーが元々希望されたエリアです。選んだ体験タグを踏まえた一言を添えてください。"
     },
     {
@@ -86,6 +90,7 @@ const REFINE_CANDIDATE_PROMPT = `
       "name": "近場代替地名1",
       "isAlternative": true,
       "co2SavingPercent": 60,
+      "extraStayHours": 2.5,
       "reason": "選んだ体験タグが近場でどう実現できるか具体的に1〜2文で説明してください。"
     },
     {
@@ -93,6 +98,7 @@ const REFINE_CANDIDATE_PROMPT = `
       "name": "近場代替地名2",
       "isAlternative": true,
       "co2SavingPercent": 40,
+      "extraStayHours": 1.5,
       "reason": "選んだ体験タグが近場でどう実現できるか具体的に1〜2文で説明してください。"
     }
   ]

@@ -17,6 +17,14 @@ export default function DestinationSelect({
 }: DestinationSelectProps) {
   const selected = candidates.find((c) => c.id === selectedId);
 
+  // 一番おすすめの代替地（CO₂削減率が最大の近場候補）を算出
+  const recommendedId = candidates
+    .filter((c) => c.isAlternative)
+    .sort((a, b) => b.co2SavingPercent - a.co2SavingPercent)[0]?.id;
+
+  const formatHours = (h: number) =>
+    Number.isInteger(h) ? `${h}` : h.toFixed(1);
+
   return (
     <div>
       <div className="intent-refine__bubble" style={{ marginBottom: 16 }}>
@@ -28,12 +36,13 @@ export default function DestinationSelect({
 
       <p className="section-title" style={{ marginBottom: 4 }}>目的地を選ぶ</p>
       <p className="helper-text" style={{ marginBottom: 14 }}>
-        近い場所を選ぶほど、移動時間と CO₂ 排出量を削減できます。
+        近い場所を選ぶほど移動時間が減り、その分 現地の滞在時間が増えて CO₂ も削減できます。
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {candidates.map((cand) => {
           const isSelected = selectedId === cand.id;
+          const isRecommended = cand.id === recommendedId;
           return (
             <button
               key={cand.id}
@@ -64,7 +73,19 @@ export default function DestinationSelect({
                   {cand.isAlternative ? '🌱' : '📍'}
                   {cand.name}
                 </span>
-                {cand.isAlternative ? (
+                {isRecommended ? (
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#fff',
+                    background: 'var(--color-primary)',
+                    padding: '3px 10px',
+                    borderRadius: '99px',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    🌱 イチオシ
+                  </span>
+                ) : cand.isAlternative ? (
                   <span style={{
                     fontSize: '11px',
                     fontWeight: 700,
@@ -74,7 +95,7 @@ export default function DestinationSelect({
                     borderRadius: '99px',
                     whiteSpace: 'nowrap',
                   }}>
-                    CO₂ 約{cand.co2SavingPercent}%削減
+                    近場エコ候補
                   </span>
                 ) : (
                   <span style={{
@@ -99,6 +120,39 @@ export default function DestinationSelect({
               }}>
                 {cand.reason}
               </p>
+
+              {/* Metrics row (alternatives only) */}
+              {cand.isAlternative && (
+                <div style={{
+                  marginTop: 10,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}>
+                  <span style={{
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    color: 'var(--color-primary-dark)',
+                    background: '#e3f4ec',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    ⏱ 滞在時間 +約{formatHours(cand.extraStayHours ?? 0)}時間
+                  </span>
+                  <span style={{
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    color: 'var(--color-primary-dark)',
+                    background: '#e3f4ec',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    🌿 CO₂ 約{cand.co2SavingPercent}%削減
+                  </span>
+                </div>
+              )}
 
               {/* Selected indicator */}
               {isSelected && (
@@ -131,7 +185,7 @@ export default function DestinationSelect({
         }}>
           <strong>選択中：{selected.name}</strong>
           {selected.isAlternative && (
-            <> — CO₂排出量を約{selected.co2SavingPercent}%削減できます🌿</>
+            <> — 現地の滞在時間が約{formatHours(selected.extraStayHours ?? 0)}時間増え、CO₂排出量を約{selected.co2SavingPercent}%削減できます🌿</>
           )}
         </div>
       )}

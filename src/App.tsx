@@ -206,7 +206,12 @@ function App() {
         conditionsWithDeparture
       );
       setRefinedCandidates(refined);
-      setSelectedDestinationId('original');
+      // デフォルトは「一番おすすめの代替地」（CO₂削減率が最大の近場候補）を初期選択にする。
+      // 代替地が無い場合のみ元の目的地にフォールバック。
+      const recommendedAlt = refined
+        .filter((c) => c.isAlternative)
+        .sort((a, b) => b.co2SavingPercent - a.co2SavingPercent)[0];
+      setSelectedDestinationId(recommendedAlt?.id ?? 'original');
       goTo(2);
     } catch (e) {
       console.error(e);
