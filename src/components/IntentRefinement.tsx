@@ -6,7 +6,6 @@ interface IntentRefinementProps {
   onToggleTag: (tag: string) => void;
   freeNote: string;
   onFreeNoteChange: (v: string) => void;
-  loading: boolean;
   onSubmit: () => void;
 }
 
@@ -50,7 +49,6 @@ export default function IntentRefinement({
   onToggleTag,
   freeNote,
   onFreeNoteChange,
-  loading,
   onSubmit,
 }: IntentRefinementProps) {
   return (
@@ -108,9 +106,9 @@ export default function IntentRefinement({
         className="primary-button"
         style={{ marginTop: 20 }}
         onClick={onSubmit}
-        disabled={loading || selectedTags.length === 0}
+        disabled={selectedTags.length === 0}
       >
-        {loading ? 'プランを作成中...' : 'このイメージでプランを提案してもらう →'}
+        次へ：目的地候補を見る →
       </button>
       {selectedTags.length === 0 && (
         <p className="helper-text" style={{ textAlign: 'center', marginTop: 8, color: '#ef4444' }}>

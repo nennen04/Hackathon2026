@@ -4,6 +4,7 @@ import StatusBar from './components/StatusBar';
 import Toast from './components/Toast';
 import NaturalLanguageInput, { extractKeywords } from './components/NaturalLanguageInput';
 import IntentRefinement from './components/IntentRefinement';
+import DestinationSelect from './components/DestinationSelect';
 import IntentExtraction from './components/IntentExtraction';
 import PlanComparison from './components/PlanComparison';
 import SimilarPlanDrawer from './components/SimilarPlanDrawer';
@@ -50,6 +51,13 @@ const STEPS: StepMeta[] = [
     label: 'イメージ調整',
     rightAction: 'help',
     helpMessage: 'AIが推論した体験タグを調整して、プランをカスタマイズできます。',
+  },
+  {
+    key: 'dest-select',
+    title: '目的地を選ぶ',
+    label: '目的地選択',
+    rightAction: 'help',
+    helpMessage: 'より近い場所を選ぶと、CO₂排出量を大幅に削減できます。',
   },
   {
     key: 'intent',
@@ -111,6 +119,7 @@ function App() {
 
   // Refinement step states
   const [extractedIntent, setExtractedIntent] = useState<ExtractedIntent | null>(null);
+  const [selectedDestinationId, setSelectedDestinationId] = useState('original');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [freeNote, setFreeNote] = useState('');
 
@@ -170,6 +179,7 @@ function App() {
       };
       const extracted = await extractTravelIntent(freeText, selectedKeywords, conditionsWithDeparture);
       setExtractedIntent(extracted);
+      setSelectedDestinationId('original');
       setSelectedTags(extracted.experienceTags);
       setFreeNote('');
       goTo(1);
@@ -186,7 +196,12 @@ function App() {
     setLoading(true);
     setLoadingMessage('AIが最適な旅行プランを作成中...\n目的地への乗り換えルートとCO₂排出量を計算しています。約30秒ほどかかります。');
     try {
-      const combinedText = `${freeText}\n追加の希望: ${freeNote}`;
+      // 選択した候補地をLLMに伝える
+      const selectedCand = extractedIntent?.candidates.find((c) => c.id === selectedDestinationId);
+      const destinationOverride = selectedCand?.isAlternative
+        ? `\n※ユーザーが目的地として「${selectedCand.name}」（近場エコ候補）を選択しました。この目的地をメインのプランに使ってください。`
+        : '';
+      const combinedText = `${freeText}\n追加の希望: ${freeNote}${destinationOverride}`;
       const conditionsWithDeparture = {
         ...selectedConditions,
         departureLabel: getDepartureLabel(),
@@ -207,7 +222,7 @@ function App() {
         setSelectedPlanId(result.plans[0].id);
       }
       
-      goTo(2);
+      goTo(3);
     } catch (e) {
       console.error(e);
       flashToast('プランの作成に失敗しました。時間をおいて再度お試しください。');
@@ -347,20 +362,29 @@ function App() {
                   }
                   freeNote={freeNote}
                   onFreeNoteChange={setFreeNote}
+                  onSubmit={() => goTo(2)}
+                />
+              )}
+
+              {currentStep.key === 'dest-select' && extractedIntent && (
+                <DestinationSelect
+                  candidates={extractedIntent.candidates}
+                  selectedId={selectedDestinationId}
+                  onSelect={setSelectedDestinationId}
                   loading={loading}
                   onSubmit={handleGeneratePlansSubmit}
                 />
               )}
 
               {currentStep.key === 'intent' && (
-                <IntentExtraction intent={travelIntent || TRAVEL_INTENT} onSubmit={() => goTo(3)} />
+                <IntentExtraction intent={travelIntent || TRAVEL_INTENT} onSubmit={() => goTo(4)} />
               )}
 
               {currentStep.key === 'compare' && (
                 <PlanComparison
                   plans={comparisonPlans.length > 0 ? comparisonPlans : [ORIGINAL_PLAN, RECOMMENDED_PLAN]}
                   onViewDetail={handleViewPlanDetail}
-                  onSubmit={() => goTo(4)}
+                  onSubmit={() => goTo(5)}
                 />
               )}
 
@@ -369,7 +393,7 @@ function App() {
                   actionStates={ecoActionStates}
                   onToggle={toggleEcoAction}
                   totalPoints={totalEcoPoints}
-                  onSubmit={() => goTo(5)}
+                  onSubmit={() => goTo(6)}
                 />
               )}
 
@@ -377,7 +401,7 @@ function App() {
                 <DetailedSchedule
                   plan={activePlanWithEco}
                   footer={
-                    <button className="primary-button" onClick={() => goTo(6)}>
+                    <button className="primary-button" onClick={() => goTo(7)}>
                       旅行後フィードバックへ
                     </button>
                   }

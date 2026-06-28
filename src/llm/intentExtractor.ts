@@ -1,8 +1,18 @@
 import { chatJson, type ChatMessage } from "./azure";
 
+export interface DestinationCandidate {
+  id: string;
+  name: string;
+  isAlternative: boolean;
+  co2SavingPercent: number;
+  reason: string;
+}
+
 export interface ExtractedIntent {
   /** AIが推測したユーザーの目的地 */
   destination: string;
+  /** 近場の候補地リスト（元の目的地も含む） */
+  candidates: DestinationCandidate[];
   /** AIが推測した体験タグ（例: ["温泉", "海鮮", "絶景"]）*/
   experienceTags: string[];
   /** AIからの一言メッセージ */
@@ -24,12 +34,36 @@ const SYSTEM_PROMPT = `
 
 返却フォーマット（JSON のみ、他のテキスト不要）:
 {
-  "destination": "ユーザーが示した目的地や地域（例: 箱根エリア）",
+  "destination": "ユーザーが元々考えている目的地（例: 伊豆エリア）",
+  "candidates": [
+    {
+      "id": "original",
+      "name": "元の目的地名（例: 伊豆エリア）",
+      "isAlternative": false,
+      "co2SavingPercent": 0,
+      "reason": "ユーザーが元々希望されたエリアです。"
+    },
+    {
+      "id": "alt-1",
+      "name": "近場代替地名1（例: 三浦半島エリア）",
+      "isAlternative": true,
+      "co2SavingPercent": 60,
+      "reason": "新宿から快速で約90分。地産地消の新鮮な三崎まぐろを楽しめ、移動CO2を60%削減できます。"
+    },
+    {
+      "id": "alt-2",
+      "name": "近場代替地名2（例: 小田原・早川エリア）",
+      "isAlternative": true,
+      "co2SavingPercent": 40,
+      "reason": "電車で約1時間。相模湾の新鮮な海鮮ランチと小田原城の歴史散策を近場で満喫できます。"
+    }
+  ],
   "experienceTags": ["体験タグ1（例: 温泉）", "体験タグ2（例: 海鮮）", "体験タグ3（例: 絶景）"],
-  "shortMessage": "ユーザーへの1文の自然な語りかけ（例: 箱根で温泉と絶景を楽しむ旅ですね！近くで同じ体験ができる穴場もご提案します🌿）"
+  "shortMessage": "ユーザーへの1文の語りかけ（例: 伊豆でのんびり温泉と海鮮を味わう旅ですね！実はもっと近くでも同じような体験ができるおすすめのエコな目的地があります🌿）"
 }
 
-タグは3〜7個程度で、具体的で選びやすいものにしてください。
+「experienceTags」は3〜7個程度で、具体的で選びやすいものにしてください。
+「co2SavingPercent」は、移動距離の短縮によって削減されるCO2排出量の目安（20%〜80%程度）を数値で入れてください。
 `;
 
 export async function extractTravelIntent(
