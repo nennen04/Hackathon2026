@@ -37,58 +37,58 @@ export async function deriveLegs(
   fetchJourneys: Fetcher,
   co2: Co2Model,
 ): Promise<Leg[]> {
-  const legs: Leg[] = []
-  for (let i = 0; i < stops.length - 1; i++) {
-    const a = stops[i]
-    const b = stops[i + 1]
-    let journeys: JourneyResult[] = []
-    try {
-      journeys = await fetchJourneys(geoRef(a.place), geoRef(b.place))
-    } catch {
-      journeys = []
-    }
-    const j = journeys[0]
-    let leg: Leg
-    if (j && j.segments.length > 0) {
-      const segments = deriveSegmentDistances(a.place, b.place, j.segments)
-      const distanceM = segments.reduce((s, x) => s + x.distanceM, 0)
-      leg = {
-        fromStopId: a.id,
-        toStopId: b.id,
-        segments,
-        durationSecs: j.durationSecs,
-        transferCount: j.transferCount,
-        distanceM,
+  const pairs = stops.slice(0, -1).map((a, i) => ({ a, b: stops[i + 1] }))
+
+  return Promise.all(
+    pairs.map(async ({ a, b }) => {
+      let journeys: JourneyResult[] = []
+      try {
+        journeys = await fetchJourneys(geoRef(a.place), geoRef(b.place))
+      } catch {
+        journeys = []
       }
-    } else {
-      const distanceM = haversineM(a.place.lat, a.place.lon, b.place.lat, b.place.lon)
-      if (distanceM > 3000) {
-        // 3km以上の場合は電車(特急・快速線等)での移動としてシミュレートする（速度: 60km/h = 16.7m/s）
-        const durationSecs = Math.round(distanceM / 16.7)
+      const j = journeys[0]
+      let leg: Leg
+      if (j && j.segments.length > 0) {
+        const segments = deriveSegmentDistances(a.place, b.place, j.segments)
+        const distanceM = segments.reduce((s, x) => s + x.distanceM, 0)
         leg = {
           fromStopId: a.id,
           toStopId: b.id,
-          segments: [{ mode: 'rail', routeName: '快速特急・特急等', durationSecs, distanceM }],
-          durationSecs,
-          transferCount: 0,
+          segments,
+          durationSecs: j.durationSecs,
+          transferCount: j.transferCount,
           distanceM,
         }
       } else {
-        const durationSecs = Math.round(distanceM / 1.3)
-        leg = {
-          fromStopId: a.id,
-          toStopId: b.id,
-          segments: [{ mode: 'walk', durationSecs, distanceM }],
-          durationSecs,
-          transferCount: 0,
-          distanceM,
+        const distanceM = haversineM(a.place.lat, a.place.lon, b.place.lat, b.place.lon)
+        if (distanceM > 3000) {
+          // 3km以上の場合は電車(特急・快速線等)での移動としてシミュレートする（速度: 60km/h = 16.7m/s）
+          const durationSecs = Math.round(distanceM / 16.7)
+          leg = {
+            fromStopId: a.id,
+            toStopId: b.id,
+            segments: [{ mode: 'rail', routeName: '快速特急・特急等', durationSecs, distanceM }],
+            durationSecs,
+            transferCount: 0,
+            distanceM,
+          }
+        } else {
+          const durationSecs = Math.round(distanceM / 1.3)
+          leg = {
+            fromStopId: a.id,
+            toStopId: b.id,
+            segments: [{ mode: 'walk', durationSecs, distanceM }],
+            durationSecs,
+            transferCount: 0,
+            distanceM,
+          }
         }
       }
-    }
-    leg.co2g = co2.estimateLeg(leg)
-    legs.push(leg)
-  }
-  return legs
+      leg.co2g = co2.estimateLeg(leg)
+      return leg
+    }),
+  )
 }
 
 /** 複数 Stop の場所を一括差し替え（id・滞在は維持、純粋・不変）。 */
