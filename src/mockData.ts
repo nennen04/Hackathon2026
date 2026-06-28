@@ -7,8 +7,7 @@ import type {
   VisitHistoryItem,
 } from './types';
 
-export const DEFAULT_FREE_TEXT =
-  'レンタカーで伊豆に行きたいです。海鮮を食べて、海も見て、温泉に入ってのんびりしたい。';
+export const DEFAULT_FREE_TEXT = '伊豆に行きたいです';
 
 export const KEYWORD_CHIPS: string[] = ['レンタカー', '伊豆', '海鮮', '海', '温泉'];
 
