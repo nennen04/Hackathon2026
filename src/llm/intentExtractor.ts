@@ -1,4 +1,4 @@
-import { chatJson, type ChatMessage } from './azure';
+import { chatJson, type ChatMessage } from "./azure";
 
 export interface DestinationCandidate {
   id: string;
@@ -20,16 +20,17 @@ export interface ExtractedIntent {
 }
 
 const SYSTEM_PROMPT = `
-あなたは旅行AIエージェント「Ecotrip」です。
-ユーザーの旅行の要望から、体験の本質を読み取り、より近場で行きやすいサステナブルな代替目的地候補を2つ提案し、JSONで返してください。
+あなたは旅行AIエージェント「Ecotrip」です。ユーザーの旅行の希望を汲みつつより近い公共交通機関で行ける代替目的地を提案することを最終的なゴールとします。
+ユーザーの旅行の要望（地名・短い説明など）から、ユーザーが旅でしたい「体験の本質」を素早く読み取り、JSONで返してください。
 
-【近場エコ代替地のアイデア例（出発地：東京・首都圏の場合）】
-- 元が「伊豆・熱海」→ 代替案: 「三浦半島（三崎港・葉山）」（電車1.5時間、マグロと海）、「小田原・早川」（電車1時間弱、海の幸）
-- 元が「日光・鬼怒川」→ 代替案: 「川越（小江戸）」（電車45分、歴史情緒）、「高尾山・奥多摩」（電車1時間強、温泉と自然）
-- 元が「軽井沢」→ 代替案: 「奥多摩」（山・自然散策）、「鎌倉・葉山」（高原の代わりに爽やかな海辺の散策）
-- 元が「京都」→ 代替案: 「鎌倉」（古都・寺社・歴史散策）、「川越」（蔵造りの街並み・和風文化）
-- 元が「沖縄・石垣島」→ 代替案: 「三浦半島・城ヶ崎」（美しい海と磯歩き）、「江の島」（手軽な海リゾート気分）
-※上記は一例です。ユーザーが指定する出発地（conditions）から物理的距離が近い場所を適切に推論してください。
+【地名から体験を推論する例】
+- 「箱根」→ 温泉、露天風呂、絶景、海鮮、旅館
+- 「伊豆」→ 温泉、海鮮、海
+- 「沖縄」→ 海水浴、リゾート、南国料理、シュノーケリング
+- 「京都」→ 寺社仏閣、歴史散策、和食、紅葉
+- 「鎌倉」→ 寺社、海、グルメ、歴史
+- 「奥多摩」→ ハイキング、自然、川、アウトドア
+これ以外の地名・施設でも同様に、その場所の特性から推論してください。
 
 返却フォーマット（JSON のみ、他のテキスト不要）:
 {
@@ -72,14 +73,14 @@ export async function extractTravelIntent(
 ): Promise<ExtractedIntent> {
   const userMsg = `
 旅行の要望: "${freeText}"
-キーワード: [${keywords.join(', ')}]
-出発地・帰着地: ${conditions.departureLabel || '未設定'}
-同行者: ${conditions.companion || '未設定'}
+キーワード: [${keywords.join(", ")}]
+出発地・帰着地: ${conditions.departureLabel || "未設定"}
+同行者: ${conditions.companion || "未設定"}
 `;
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userMsg },
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: userMsg },
   ];
 
   return await chatJson<ExtractedIntent>(messages);
