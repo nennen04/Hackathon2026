@@ -27,7 +27,7 @@ import {
 } from './mockData';
 import type { TravelPlan, TravelIntent } from './types';
 import { generateTravelPlans } from './llm/planner';
-import { extractTravelIntent, type ExtractedIntent } from './llm/intentExtractor';
+import { extractTravelIntent, refineDestinationCandidates, type ExtractedIntent, type DestinationCandidate } from './llm/intentExtractor';
 
 interface StepMeta {
   key: string;
@@ -119,6 +119,7 @@ function App() {
 
   // Refinement step states
   const [extractedIntent, setExtractedIntent] = useState<ExtractedIntent | null>(null);
+  const [refinedCandidates, setRefinedCandidates] = useState<DestinationCandidate[]>([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState('original');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [freeNote, setFreeNote] = useState('');
@@ -179,6 +180,7 @@ function App() {
       };
       const extracted = await extractTravelIntent(freeText, selectedKeywords, conditionsWithDeparture);
       setExtractedIntent(extracted);
+      setRefinedCandidates([]);
       setSelectedDestinationId('original');
       setSelectedTags(extracted.experienceTags);
       setFreeNote('');
@@ -191,13 +193,43 @@ function App() {
     }
   }
 
-  // Step 1 -> Step 2 (Full Plan Generation)
+  // Step 1 -> Step 2 (Refined Destination Candidates Generation)
+  async function handleRefineSubmit() {
+    if (!extractedIntent) return;
+    setLoading(true);
+    setLoadingMessage('AIがご希望に合わせた目的地を探しています...');
+    try {
+      const conditionsWithDeparture = {
+        ...selectedConditions,
+        departureLabel: getDepartureLabel(),
+      };
+      const refined = await refineDestinationCandidates(
+        extractedIntent.destination,
+        selectedTags,
+        freeNote,
+        conditionsWithDeparture
+      );
+      setRefinedCandidates(refined);
+      setSelectedDestinationId('original');
+      goTo(2);
+    } catch (e) {
+      console.error(e);
+      flashToast('目的地候補の再計算に失敗しました。');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Step 2 -> Step 3 (Full Plan Generation)
   async function handleGeneratePlansSubmit() {
     setLoading(true);
     setLoadingMessage('AIが最適な旅行プランを作成中...\n目的地への乗り換えルートとCO₂排出量を計算しています。約30秒ほどかかります。');
     try {
       // 選択した候補地をLLMに伝える
-      const selectedCand = extractedIntent?.candidates.find((c) => c.id === selectedDestinationId);
+      const candidatesToSearch = refinedCandidates.length > 0
+        ? refinedCandidates
+        : (extractedIntent?.candidates || []);
+      const selectedCand = candidatesToSearch.find((c) => c.id === selectedDestinationId);
       const destinationOverride = selectedCand?.isAlternative
         ? `\n※ユーザーが目的地として「${selectedCand.name}」（近場エコ候補）を選択しました。この目的地をメインのプランに使ってください。`
         : '';
@@ -362,13 +394,13 @@ function App() {
                   }
                   freeNote={freeNote}
                   onFreeNoteChange={setFreeNote}
-                  onSubmit={() => goTo(2)}
+                  onSubmit={handleRefineSubmit}
                 />
               )}
 
               {currentStep.key === 'dest-select' && extractedIntent && (
                 <DestinationSelect
-                  candidates={extractedIntent.candidates}
+                  candidates={refinedCandidates.length > 0 ? refinedCandidates : (extractedIntent.candidates || [])}
                   selectedId={selectedDestinationId}
                   onSelect={setSelectedDestinationId}
                   loading={loading}

@@ -12,7 +12,7 @@ export interface ExtractedIntent {
   /** AIが推測したユーザーの目的地 */
   destination: string;
   /** 近場の候補地リスト（元の目的地も含む） */
-  candidates: DestinationCandidate[];
+  candidates?: DestinationCandidate[];
   /** AIが推測した体験タグ（例: ["温泉", "海鮮", "絶景"]）*/
   experienceTags: string[];
   /** AIからの一言メッセージ */
@@ -35,35 +35,11 @@ const SYSTEM_PROMPT = `
 返却フォーマット（JSON のみ、他のテキスト不要）:
 {
   "destination": "ユーザーが元々考えている目的地（例: 伊豆エリア）",
-  "candidates": [
-    {
-      "id": "original",
-      "name": "元の目的地名（例: 伊豆エリア）",
-      "isAlternative": false,
-      "co2SavingPercent": 0,
-      "reason": "ユーザーが元々希望されたエリアです。"
-    },
-    {
-      "id": "alt-1",
-      "name": "近場代替地名1（例: 三浦半島エリア）",
-      "isAlternative": true,
-      "co2SavingPercent": 60,
-      "reason": "新宿から快速で約90分。地産地消の新鮮な三崎まぐろを楽しめ、移動CO2を60%削減できます。"
-    },
-    {
-      "id": "alt-2",
-      "name": "近場代替地名2（例: 小田原・早川エリア）",
-      "isAlternative": true,
-      "co2SavingPercent": 40,
-      "reason": "電車で約1時間。相模湾の新鮮な海鮮ランチと小田原城の歴史散策を近場で満喫できます。"
-    }
-  ],
   "experienceTags": ["体験タグ1（例: 温泉）", "体験タグ2（例: 海鮮）", "体験タグ3（例: 絶景）"],
-  "shortMessage": "ユーザーへの1文の語りかけ（例: 伊豆でのんびり温泉と海鮮を味わう旅ですね！実はもっと近くでも同じような体験ができるおすすめのエコな目的地があります🌿）"
+  "shortMessage": "ユーザーへの1文の語りかけ（例: 伊豆でのんびり温泉と海鮮を味わう旅ですね！この後、より近い場所で同じ体験ができるエコな目的地を提案します🌿）"
 }
 
 「experienceTags」は3〜7個程度で、具体的で選びやすいものにしてください。
-「co2SavingPercent」は、移動距離の短縮によって削減されるCO2排出量の目安（20%〜80%程度）を数値で入れてください。
 `;
 
 export async function extractTravelIntent(
@@ -84,4 +60,63 @@ export async function extractTravelIntent(
   ];
 
   return await chatJson<ExtractedIntent>(messages);
+}
+
+const REFINE_CANDIDATE_PROMPT = `
+あなたは旅行AIエージェント「Ecotrip」です。
+ユーザーが選んだ「体験したいこと（タグ）」と自由メモをもとに、元の目的地と近場のエコ代替地を2つ提案し直してください。
+
+ポイント:
+- ユーザーが選んだ体験タグを必ず考慮し、その体験ができる近場の目的地を選ぶこと
+- 出発地から物理的に近い（同等かより近い）場所を選ぶこと
+- co2SavingPercent は移動距離の差から推定した目安の削減率（0〜80%の整数）
+
+返却フォーマット（JSONのみ、他のテキスト不要）:
+{
+  "candidates": [
+    {
+      "id": "original",
+      "name": "元の目的地名",
+      "isAlternative": false,
+      "co2SavingPercent": 0,
+      "reason": "ユーザーが元々希望されたエリアです。選んだ体験タグを踏まえた一言を添えてください。"
+    },
+    {
+      "id": "alt-1",
+      "name": "近場代替地名1",
+      "isAlternative": true,
+      "co2SavingPercent": 60,
+      "reason": "選んだ体験タグが近場でどう実現できるか具体的に1〜2文で説明してください。"
+    },
+    {
+      "id": "alt-2",
+      "name": "近場代替地名2",
+      "isAlternative": true,
+      "co2SavingPercent": 40,
+      "reason": "選んだ体験タグが近場でどう実現できるか具体的に1〜2文で説明してください。"
+    }
+  ]
+}
+`;
+
+export async function refineDestinationCandidates(
+  originalDestination: string,
+  selectedTags: string[],
+  freeNote: string,
+  conditions: Record<string, string>,
+): Promise<DestinationCandidate[]> {
+  const userMsg = `
+元の目的地: "${originalDestination}"
+出発地: ${conditions.departureLabel || '未設定'}
+ユーザーが選んだ体験タグ: [${selectedTags.join(', ')}]
+自由メモ: "${freeNote || 'なし'}"
+`;
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: REFINE_CANDIDATE_PROMPT },
+    { role: 'user', content: userMsg },
+  ];
+
+  const res = await chatJson<{ candidates: DestinationCandidate[] }>(messages);
+  return res.candidates || [];
 }
