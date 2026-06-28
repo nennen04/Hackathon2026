@@ -7,8 +7,6 @@ interface NaturalLanguageInputProps {
   onToggleKeyword: (keyword: string) => void;
   selectedConditions: Record<string, string>;
   onSelectCondition: (groupId: string, optionId: string) => void;
-  customDeparture: string;
-  onCustomDepartureChange: (value: string) => void;
   onSubmit: () => void;
 }
 
@@ -32,8 +30,6 @@ function NaturalLanguageInput({
   onToggleKeyword,
   selectedConditions,
   onSelectCondition,
-  customDeparture,
-  onCustomDepartureChange,
   onSubmit,
 }: NaturalLanguageInputProps) {
   const matchedPresets = extractKeywords(freeText);
@@ -94,26 +90,6 @@ function NaturalLanguageInput({
               </button>
             ))}
           </div>
-          {group.id === 'departure' && selectedConditions[group.id] === 'custom' && (
-            <div style={{ marginTop: 10 }}>
-              <input
-                type="text"
-                className="departure-custom-input"
-                value={customDeparture}
-                onChange={(e) => onCustomDepartureChange(e.target.value)}
-                placeholder="例: 新宿駅、大宮駅、横浜の自宅、渋谷駅など"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1.5px solid var(--color-primary)',
-                  fontSize: '13.5px',
-                  outline: 'none',
-                  background: '#fff',
-                }}
-              />
-            </div>
-          )}
         </div>
       ))}
 

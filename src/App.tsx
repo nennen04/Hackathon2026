@@ -12,7 +12,10 @@ import PlanDetailOverlay from './components/PlanDetailOverlay';
 import EcoActionSelection from './components/EcoActionSelection';
 import DetailedSchedule from './components/DetailedSchedule';
 import FeedbackForm from './components/FeedbackForm';
+import DepartureLocationLink from './components/DepartureLocationLink';
+import DepartureLocationSheet from './components/DepartureLocationSheet';
 import {
+  DEFAULT_DEPARTURE_LOCATION,
   DEFAULT_FEEDBACK_COMMENT,
   DEFAULT_FREE_TEXT,
   DEFAULT_RATINGS,
@@ -114,8 +117,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   
-  // Custom departure location state
-  const [customDeparture, setCustomDeparture] = useState('新宿駅');
+  // Departure location shown top-left on Step 1 and referenced across later steps
+  const [departureLocation, setDepartureLocation] = useState(DEFAULT_DEPARTURE_LOCATION);
+  const [isDepartureSheetOpen, setIsDepartureSheetOpen] = useState(false);
 
   // Refinement step states
   const [extractedIntent, setExtractedIntent] = useState<ExtractedIntent | null>(null);
@@ -161,14 +165,6 @@ function App() {
     );
   }
 
-  function getDepartureLabel() {
-    if (selectedConditions.departure === 'home-shinjuku') return '新宿駅（自宅）';
-    if (selectedConditions.departure === 'home-yokohama') return '横浜駅（自宅）';
-    if (selectedConditions.departure === 'tokyo') return '東京駅';
-    if (selectedConditions.departure === 'custom') return customDeparture || '新宿駅';
-    return '東京駅';
-  }
-
   // Step 0 -> Step 1 (Fast Intent Extraction)
   async function handleSearchSubmit() {
     setLoading(true);
@@ -176,7 +172,7 @@ function App() {
     try {
       const conditionsWithDeparture = {
         ...selectedConditions,
-        departureLabel: getDepartureLabel(),
+        departureLabel: departureLocation,
       };
       const extracted = await extractTravelIntent(freeText, selectedKeywords, conditionsWithDeparture);
       setExtractedIntent(extracted);
@@ -236,7 +232,7 @@ function App() {
       const combinedText = `${freeText}\n追加の希望: ${freeNote}${destinationOverride}`;
       const conditionsWithDeparture = {
         ...selectedConditions,
-        departureLabel: getDepartureLabel(),
+        departureLabel: departureLocation,
       };
       const result = await generateTravelPlans(combinedText, selectedTags, conditionsWithDeparture);
       setTravelIntent(result.intent);
@@ -330,6 +326,12 @@ function App() {
       <div className="phone-frame">
         <StatusBar />
         <div className="screen-scroll">
+          {currentStep.key === 'input' && (
+            <DepartureLocationLink
+              departureLocation={departureLocation}
+              onClick={() => setIsDepartureSheetOpen(true)}
+            />
+          )}
           <StepHeader
             stepNumber={stepIndex + 1}
             totalSteps={STEPS.length}
@@ -377,8 +379,6 @@ function App() {
                   onToggleKeyword={toggleKeyword}
                   selectedConditions={selectedConditions}
                   onSelectCondition={selectCondition}
-                  customDeparture={customDeparture}
-                  onCustomDepartureChange={setCustomDeparture}
                   onSubmit={handleSearchSubmit}
                 />
               )}
@@ -409,12 +409,17 @@ function App() {
               )}
 
               {currentStep.key === 'intent' && (
-                <IntentExtraction intent={travelIntent || TRAVEL_INTENT} onSubmit={() => goTo(4)} />
+                <IntentExtraction
+                  intent={travelIntent || TRAVEL_INTENT}
+                  departureLocation={departureLocation}
+                  onSubmit={() => goTo(3)}
+                />
               )}
 
               {currentStep.key === 'compare' && (
                 <PlanComparison
                   plans={comparisonPlans.length > 0 ? comparisonPlans : [ORIGINAL_PLAN, RECOMMENDED_PLAN]}
+                  departureLocation={departureLocation}
                   onViewDetail={handleViewPlanDetail}
                   onSubmit={() => goTo(5)}
                 />
@@ -432,6 +437,7 @@ function App() {
               {currentStep.key === 'schedule' && (
                 <DetailedSchedule
                   plan={activePlanWithEco}
+                  departureLocation={departureLocation}
                   footer={
                     <button className="primary-button" onClick={() => goTo(7)}>
                       旅行後フィードバックへ
@@ -465,6 +471,16 @@ function App() {
         />
 
         <PlanDetailOverlay plan={viewingPlan} onClose={handleClosePlanDetail} />
+
+        <DepartureLocationSheet
+          open={isDepartureSheetOpen}
+          currentValue={departureLocation}
+          onSelect={(value) => {
+            setDepartureLocation(value);
+            setIsDepartureSheetOpen(false);
+          }}
+          onClose={() => setIsDepartureSheetOpen(false)}
+        />
 
         {toastMessage && <Toast message={toastMessage} />}
       </div>

@@ -3,12 +3,18 @@ import type { TravelPlan } from '../types';
 
 interface DetailedScheduleProps {
   plan: TravelPlan;
+  departureLocation?: string;
   footer?: ReactNode;
 }
 
-function DetailedSchedule({ plan, footer }: DetailedScheduleProps) {
+function DetailedSchedule({ plan, departureLocation, footer }: DetailedScheduleProps) {
   return (
     <div>
+      {departureLocation && (
+        <p className="departure-context-note" style={{ textAlign: 'center' }}>
+          出発地：{departureLocation}
+        </p>
+      )}
       <p className="schedule-title">{plan.name}</p>
 
       <div className="timeline">

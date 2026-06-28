@@ -9,6 +9,24 @@ import type {
 
 export const DEFAULT_FREE_TEXT = '伊豆に行きたいです';
 
+export const DEFAULT_DEPARTURE_LOCATION = '東京大学 本郷キャンパス 工学部2号館';
+
+export const CURRENT_LOCATION_MOCK_LABEL = '現在地（取得済み）';
+
+export interface QuickDepartureLocation {
+  id: string;
+  label: string;
+  value: string;
+  icon: string;
+}
+
+export const QUICK_DEPARTURE_LOCATIONS: QuickDepartureLocation[] = [
+  { id: 'home', label: '自宅（新宿1-11-5）', value: '自宅（新宿1-11-5）', icon: '🏠' },
+  { id: 'tokyo', label: '東京駅', value: '東京駅', icon: '📍' },
+  { id: 'shinagawa', label: '品川駅', value: '品川駅', icon: '📍' },
+  { id: 'shibuya', label: '渋谷駅', value: '渋谷駅', icon: '📍' },
+];
+
 export const KEYWORD_CHIPS: string[] = ['レンタカー', '伊豆', '海鮮', '海', '温泉'];
 
 export const CONDITION_GROUPS: ConditionGroup[] = [
@@ -20,16 +38,6 @@ export const CONDITION_GROUPS: ConditionGroup[] = [
       { id: '1night', label: '1泊2日' },
       { id: '2nights', label: '2泊3日' },
       { id: '3nights-plus', label: '3泊以上' },
-    ],
-  },
-  {
-    id: 'departure',
-    label: '出発地（自宅・主要駅）',
-    options: [
-      { id: 'home-shinjuku', label: '自宅（新宿駅）' },
-      { id: 'home-yokohama', label: '自宅（横浜駅）' },
-      { id: 'tokyo', label: '東京駅' },
-      { id: 'custom', label: 'その他（駅名入力）' },
     ],
   },
   {
@@ -56,7 +64,6 @@ export const CONDITION_GROUPS: ConditionGroup[] = [
 
 export const DEFAULT_SELECTED_CONDITIONS: Record<string, string> = {
   duration: '1night',
-  departure: 'home-shinjuku',
   companion: 'couple',
   style: 'relax',
 };
