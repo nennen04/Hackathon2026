@@ -7,6 +7,8 @@ interface NaturalLanguageInputProps {
   onToggleKeyword: (keyword: string) => void;
   selectedConditions: Record<string, string>;
   onSelectCondition: (groupId: string, optionId: string) => void;
+  customDeparture: string;
+  onCustomDepartureChange: (value: string) => void;
   onSubmit: () => void;
 }
 
@@ -20,37 +22,6 @@ const KEYWORD_PRESETS = [
 
 export function extractKeywords(text: string): string[] {
   const matched = KEYWORD_PRESETS.filter((kw) => text.includes(kw));
-
-  // 漢字の熟語（2〜4文字）とカタカナ語（2〜6文字）を正規表現で抽出
-  const kanjiRegex = /[一-龠]{2,4}/g;
-  const katakanaRegex = /[ァ-ヴー]{2,6}/g;
-
-  const exclusions = new Set([
-    '希望', '予定', '出発', '到着', '旅行', '計画', '一緒', '今回', '前回', '場所', '自分', '家族', '友達', '夫婦'
-  ]);
-
-  let match;
-  while ((match = kanjiRegex.exec(text)) !== null) {
-    const word = match[0];
-    if (!exclusions.has(word) && word.length >= 2) {
-      matched.push(word);
-    }
-  }
-  while ((match = katakanaRegex.exec(text)) !== null) {
-    const word = match[0];
-    if (!exclusions.has(word) && word.length >= 2) {
-      matched.push(word);
-    }
-  }
-
-  // 特定の類義語・表現のゆらぎをキーワードへマッピング
-  if (text.includes('子供') || text.includes('子ども') || text.includes('子連れ')) {
-    matched.push('子供');
-  }
-  if (text.includes('だらだら') || text.includes('のんびり') || text.includes('ゆったり')) {
-    matched.push('のんびり');
-  }
-
   return Array.from(new Set(matched));
 }
 
@@ -61,6 +32,8 @@ function NaturalLanguageInput({
   onToggleKeyword,
   selectedConditions,
   onSelectCondition,
+  customDeparture,
+  onCustomDepartureChange,
   onSubmit,
 }: NaturalLanguageInputProps) {
   const matchedPresets = extractKeywords(freeText);
@@ -79,7 +52,7 @@ function NaturalLanguageInput({
           value={freeText}
           maxLength={MAX_LENGTH}
           onChange={(e) => onFreeTextChange(e.target.value)}
-          placeholder="例：レンタカーで伊豆に行きたいです。海鮮を食べて、海も見て、温泉に入ってのんびりしたい。"
+          placeholder="例：箱根でゆっくり温泉に入りたい。美味しい料理を食べて癒されたい。"
         />
         <span className="nli-counter">
           {freeText.length}/{MAX_LENGTH}
@@ -121,10 +94,30 @@ function NaturalLanguageInput({
               </button>
             ))}
           </div>
+          {group.id === 'departure' && selectedConditions[group.id] === 'custom' && (
+            <div style={{ marginTop: 10 }}>
+              <input
+                type="text"
+                className="departure-custom-input"
+                value={customDeparture}
+                onChange={(e) => onCustomDepartureChange(e.target.value)}
+                placeholder="例: 新宿駅、大宮駅、横浜の自宅、渋谷駅など"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1.5px solid var(--color-primary)',
+                  fontSize: '13.5px',
+                  outline: 'none',
+                  background: '#fff',
+                }}
+              />
+            </div>
+          )}
         </div>
       ))}
 
-      <button className="primary-button" onClick={onSubmit} style={{ marginTop: 8 }}>
+      <button className="primary-button" onClick={onSubmit} style={{ marginTop: 16 }}>
         AIに提案してもらう →
       </button>
       <p className="nli-estimate">所要時間 約30秒</p>

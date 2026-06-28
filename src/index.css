@@ -1218,3 +1218,104 @@ h1, h2, h3, h4, p {
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* ---------- IntentRefine ---------- */
+.intent-refine {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.intent-refine__bubble {
+  display: flex;
+  gap: 12px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border-left: 4px solid var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.intent-refine__bubble-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.intent-refine__bubble-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--color-primary-dark);
+  font-weight: 500;
+}
+
+.intent-refine__dest {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fafdfb;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.intent-refine__dest-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--color-bg-accent);
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.intent-refine__dest-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.intent-refine__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.intent-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 99px;
+  border: 1.5px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.intent-tag:hover {
+  border-color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
+  transform: translateY(-1px);
+}
+
+.intent-tag--on {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(22, 160, 111, 0.2);
+}
+
+.intent-tag--on:hover {
+  border-color: var(--color-primary-dark);
+  background: var(--color-primary-dark);
+  color: #fff;
+}
+
+.intent-tag__icon {
+  font-size: 14px;
+}
+

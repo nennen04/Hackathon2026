@@ -3,6 +3,7 @@ import StepHeader from './components/StepHeader';
 import StatusBar from './components/StatusBar';
 import Toast from './components/Toast';
 import NaturalLanguageInput, { extractKeywords } from './components/NaturalLanguageInput';
+import IntentRefinement from './components/IntentRefinement';
 import IntentExtraction from './components/IntentExtraction';
 import PlanComparison from './components/PlanComparison';
 import SimilarPlanDrawer from './components/SimilarPlanDrawer';
@@ -25,6 +26,7 @@ import {
 } from './mockData';
 import type { TravelPlan, TravelIntent } from './types';
 import { generateTravelPlans } from './llm/planner';
+import { extractTravelIntent, type ExtractedIntent } from './llm/intentExtractor';
 
 interface StepMeta {
   key: string;
@@ -38,40 +40,47 @@ const STEPS: StepMeta[] = [
   {
     key: 'input',
     title: '旅行の希望を入力',
-    label: '旅行の希望を入力',
+    label: '希望を入力',
     rightAction: 'help',
     helpMessage: 'AIが文章から行き先・目的・移動手段を自動で読み取ります。',
   },
   {
+    key: 'refine',
+    title: '旅行のイメージを調整',
+    label: 'イメージ調整',
+    rightAction: 'help',
+    helpMessage: 'AIが推論した体験タグを調整して、プランをカスタマイズできます。',
+  },
+  {
     key: 'intent',
     title: 'AIが意図を整理しました',
-    label: 'AIが意図を整理',
+    label: '意図を確認',
     rightAction: 'help',
     helpMessage: 'CO₂排出量や体力消耗度はAIによる推定値です。',
   },
   {
     key: 'compare',
     title: '代替プランを比較',
-    label: '代替プランを比較',
+    label: 'プラン比較',
     rightAction: 'menu',
   },
   {
     key: 'eco',
     title: 'さらにエコにする',
-    label: 'さらにエコにする',
+    label: 'さらにエコに',
     rightAction: 'help',
     helpMessage: 'エコアクションを選ぶほどポイントが貯まり、CO₂削減に貢献できます。',
   },
   {
     key: 'schedule',
     title: '旅の詳細スケジュール',
-    label: '旅の詳細スケジュール',
+    label: 'スケジュール',
     rightAction: 'none',
   },
   {
     key: 'feedback',
     title: '旅行後フィードバック',
-    label: '旅行後フィードバック',
+    label: 'フィードバック',
     rightAction: 'help',
     helpMessage: '評価は次回のAIの提案に反映されます。',
   },
@@ -95,6 +104,17 @@ function App() {
   }, [freeText]);
 
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  
+  // Custom departure location state
+  const [customDeparture, setCustomDeparture] = useState('新宿駅');
+
+  // Refinement step states
+  const [extractedIntent, setExtractedIntent] = useState<ExtractedIntent | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [freeNote, setFreeNote] = useState('');
+
+  // Generated plans states
   const [travelIntent, setTravelIntent] = useState<TravelIntent | null>(null);
   const [allPlans, setAllPlans] = useState<TravelPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -131,10 +151,47 @@ function App() {
     );
   }
 
+  function getDepartureLabel() {
+    if (selectedConditions.departure === 'home-shinjuku') return '新宿駅（自宅）';
+    if (selectedConditions.departure === 'home-yokohama') return '横浜駅（自宅）';
+    if (selectedConditions.departure === 'tokyo') return '東京駅';
+    if (selectedConditions.departure === 'custom') return customDeparture || '新宿駅';
+    return '東京駅';
+  }
+
+  // Step 0 -> Step 1 (Fast Intent Extraction)
   async function handleSearchSubmit() {
     setLoading(true);
+    setLoadingMessage('AIが旅行の意図を分析しています...');
     try {
-      const result = await generateTravelPlans(freeText, selectedKeywords, selectedConditions);
+      const conditionsWithDeparture = {
+        ...selectedConditions,
+        departureLabel: getDepartureLabel(),
+      };
+      const extracted = await extractTravelIntent(freeText, selectedKeywords, conditionsWithDeparture);
+      setExtractedIntent(extracted);
+      setSelectedTags(extracted.experienceTags);
+      setFreeNote('');
+      goTo(1);
+    } catch (e) {
+      console.error(e);
+      flashToast('旅行意図の読み取りに失敗しました。');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Step 1 -> Step 2 (Full Plan Generation)
+  async function handleGeneratePlansSubmit() {
+    setLoading(true);
+    setLoadingMessage('AIが最適な旅行プランを作成中...\n目的地への乗り換えルートとCO₂排出量を計算しています。約30秒ほどかかります。');
+    try {
+      const combinedText = `${freeText}\n追加の希望: ${freeNote}`;
+      const conditionsWithDeparture = {
+        ...selectedConditions,
+        departureLabel: getDepartureLabel(),
+      };
+      const result = await generateTravelPlans(combinedText, selectedTags, conditionsWithDeparture);
       setTravelIntent(result.intent);
       setAllPlans(result.plans);
       
@@ -150,7 +207,7 @@ function App() {
         setSelectedPlanId(result.plans[0].id);
       }
       
-      goTo(1);
+      goTo(2);
     } catch (e) {
       console.error(e);
       flashToast('プランの作成に失敗しました。時間をおいて再度お試しください。');
@@ -163,6 +220,7 @@ function App() {
     setSelectedConditions((prev) => ({ ...prev, [groupId]: optionId }));
   }
 
+  // EcoActionSelection support
   function toggleEcoAction(id: string) {
     setEcoActionStates((prev) => ({ ...prev, [id]: !prev[id] }));
   }
@@ -181,6 +239,7 @@ function App() {
     setViewingPlan(plan);
   }
 
+  // Overlay support
   function handleClosePlanDetail() {
     setViewingPlan(null);
   }
@@ -211,7 +270,7 @@ function App() {
     return RECOMMENDED_PLAN;
   }
 
-  // エコアクションの選択状況を反映させたCO2排出量を算出する
+  // Calculate CO2 emission reflecting eco action states
   const activePlanWithEco = activePlan ? {
     ...activePlan,
     co2: Math.max(0.5, Math.round((activePlan.co2 * (1 - (totalEcoPoints * 0.005))) * 10) / 10)
@@ -259,10 +318,7 @@ function App() {
                   100% { transform: rotate(360deg); }
                 }
               `}</style>
-              <p style={{ fontWeight: 'bold', color: '#111827' }}>AIが旅行プランを作成中...</p>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 8 }}>
-                最適な移動ルートとCO₂排出量を計算しています。約30秒ほどかかります。
-              </p>
+              <p style={{ fontWeight: 'bold', color: '#111827', whiteSpace: 'pre-line' }}>{loadingMessage}</p>
             </div>
           ) : (
             <>
@@ -274,19 +330,37 @@ function App() {
                   onToggleKeyword={toggleKeyword}
                   selectedConditions={selectedConditions}
                   onSelectCondition={selectCondition}
+                  customDeparture={customDeparture}
+                  onCustomDepartureChange={setCustomDeparture}
                   onSubmit={handleSearchSubmit}
                 />
               )}
 
+              {currentStep.key === 'refine' && extractedIntent && (
+                <IntentRefinement
+                  extracted={extractedIntent}
+                  selectedTags={selectedTags}
+                  onToggleTag={(tag) =>
+                    setSelectedTags((prev) =>
+                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )
+                  }
+                  freeNote={freeNote}
+                  onFreeNoteChange={setFreeNote}
+                  loading={loading}
+                  onSubmit={handleGeneratePlansSubmit}
+                />
+              )}
+
               {currentStep.key === 'intent' && (
-                <IntentExtraction intent={travelIntent || TRAVEL_INTENT} onSubmit={() => goTo(2)} />
+                <IntentExtraction intent={travelIntent || TRAVEL_INTENT} onSubmit={() => goTo(3)} />
               )}
 
               {currentStep.key === 'compare' && (
                 <PlanComparison
                   plans={comparisonPlans.length > 0 ? comparisonPlans : [ORIGINAL_PLAN, RECOMMENDED_PLAN]}
                   onViewDetail={handleViewPlanDetail}
-                  onSubmit={() => goTo(3)}
+                  onSubmit={() => goTo(4)}
                 />
               )}
 
@@ -295,7 +369,7 @@ function App() {
                   actionStates={ecoActionStates}
                   onToggle={toggleEcoAction}
                   totalPoints={totalEcoPoints}
-                  onSubmit={() => goTo(4)}
+                  onSubmit={() => goTo(5)}
                 />
               )}
 
@@ -303,7 +377,7 @@ function App() {
                 <DetailedSchedule
                   plan={activePlanWithEco}
                   footer={
-                    <button className="primary-button" onClick={() => goTo(5)}>
+                    <button className="primary-button" onClick={() => goTo(6)}>
                       旅行後フィードバックへ
                     </button>
                   }

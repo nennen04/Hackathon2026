@@ -24,13 +24,13 @@ export const CONDITION_GROUPS: ConditionGroup[] = [
     ],
   },
   {
-    id: 'transport',
-    label: '移動手段',
+    id: 'departure',
+    label: '出発地（自宅・主要駅）',
     options: [
-      { id: 'car', label: '自家用車・レンタカー' },
-      { id: 'train', label: '電車' },
-      { id: 'bus', label: 'バス' },
-      { id: 'walk', label: '徒歩・その他' },
+      { id: 'home-shinjuku', label: '自宅（新宿駅）' },
+      { id: 'home-yokohama', label: '自宅（横浜駅）' },
+      { id: 'tokyo', label: '東京駅' },
+      { id: 'custom', label: 'その他（駅名入力）' },
     ],
   },
   {
@@ -57,7 +57,7 @@ export const CONDITION_GROUPS: ConditionGroup[] = [
 
 export const DEFAULT_SELECTED_CONDITIONS: Record<string, string> = {
   duration: '1night',
-  transport: 'car',
+  departure: 'home-shinjuku',
   companion: 'couple',
   style: 'relax',
 };
