@@ -4,6 +4,8 @@ import type { TravelPlan } from '../types';
 interface PlanComparisonProps {
   plans: TravelPlan[];
   departureLocation: string;
+  selectedPlanId: string | null;
+  onSelectPlan: (plan: TravelPlan) => void;
   onViewDetail: (plan: TravelPlan) => void;
   onSubmit: () => void;
 }
@@ -26,9 +28,19 @@ function planCardClassName(plan: TravelPlan) {
   return 'plan-card';
 }
 
-function PlanCard({ plan, onViewDetail }: { plan: TravelPlan; onViewDetail: () => void }) {
+function PlanCard({
+  plan,
+  selected,
+  onSelect,
+  onViewDetail,
+}: {
+  plan: TravelPlan;
+  selected: boolean;
+  onSelect: () => void;
+  onViewDetail: () => void;
+}) {
   return (
-    <div className={planCardClassName(plan)}>
+    <div className={`${planCardClassName(plan)}${selected ? ' plan-card--selected' : ''}`}>
       {plan.label && <span className="plan-card__badge">{plan.label}</span>}
       <div className="plan-card__emoji">{plan.icon}</div>
       <p className="plan-card__name">{plan.name}</p>
@@ -43,11 +55,17 @@ function PlanCard({ plan, onViewDetail }: { plan: TravelPlan; onViewDetail: () =
       <button className="plan-card__detail-btn" onClick={onViewDetail}>
         詳細を見る
       </button>
+      <button
+        className={selected ? 'plan-card__select-btn plan-card__select-btn--active' : 'plan-card__select-btn'}
+        onClick={onSelect}
+      >
+        {selected ? '✓ 選択中' : 'このプランにする'}
+      </button>
     </div>
   );
 }
 
-function PlanComparison({ plans, departureLocation, onViewDetail, onSubmit }: PlanComparisonProps) {
+function PlanComparison({ plans, departureLocation, selectedPlanId, onSelectPlan, onViewDetail, onSubmit }: PlanComparisonProps) {
   return (
     <div>
       <p className="section-title">プランを見比べてみましょう</p>
@@ -56,7 +74,13 @@ function PlanComparison({ plans, departureLocation, onViewDetail, onSubmit }: Pl
       </p>
       <div className="plan-card-row">
         {plans.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} onViewDetail={() => onViewDetail(plan)} />
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            selected={plan.id === selectedPlanId}
+            onSelect={() => onSelectPlan(plan)}
+            onViewDetail={() => onViewDetail(plan)}
+          />
         ))}
       </div>
 

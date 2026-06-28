@@ -420,6 +420,8 @@ function App() {
                 <PlanComparison
                   plans={comparisonPlans.length > 0 ? comparisonPlans : [ORIGINAL_PLAN, RECOMMENDED_PLAN]}
                   departureLocation={departureLocation}
+                  selectedPlanId={selectedPlanId}
+                  onSelectPlan={(plan) => setSelectedPlanId(plan.id)}
                   onViewDetail={handleViewPlanDetail}
                   onSubmit={() => goTo(5)}
                 />
