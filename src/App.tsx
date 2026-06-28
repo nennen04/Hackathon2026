@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import StepHeader from './components/StepHeader';
 import StatusBar from './components/StatusBar';
 import Toast from './components/Toast';
-import NaturalLanguageInput from './components/NaturalLanguageInput';
+import NaturalLanguageInput, { extractKeywords } from './components/NaturalLanguageInput';
 import IntentExtraction from './components/IntentExtraction';
 import PlanComparison from './components/PlanComparison';
 import SimilarPlanDrawer from './components/SimilarPlanDrawer';
@@ -89,6 +89,10 @@ function App() {
   const [selectedConditions, setSelectedConditions] = useState<Record<string, string>>(
     DEFAULT_SELECTED_CONDITIONS,
   );
+
+  useEffect(() => {
+    setSelectedKeywords(extractKeywords(freeText));
+  }, [freeText]);
 
   const [loading, setLoading] = useState(false);
   const [travelIntent, setTravelIntent] = useState<TravelIntent | null>(null);
