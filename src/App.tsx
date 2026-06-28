@@ -412,7 +412,7 @@ function App() {
                 <IntentExtraction
                   intent={travelIntent || TRAVEL_INTENT}
                   departureLocation={departureLocation}
-                  onSubmit={() => goTo(3)}
+                  onSubmit={() => goTo(4)}
                 />
               )}
 
