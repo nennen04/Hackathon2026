@@ -7,8 +7,7 @@ import type {
   VisitHistoryItem,
 } from './types';
 
-export const DEFAULT_FREE_TEXT =
-  'レンタカーで伊豆に行きたいです。海鮮を食べて、海も見て、温泉に入ってのんびりしたい。';
+export const DEFAULT_FREE_TEXT = '伊豆に行きたいです';
 
 export const DEFAULT_DEPARTURE_LOCATION = '東京大学 本郷キャンパス 工学部2号館';
 
