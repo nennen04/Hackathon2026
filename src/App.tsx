@@ -197,7 +197,7 @@ function App() {
     try {
       const conditionsWithDeparture = {
         ...selectedConditions,
-        departureLabel: getDepartureLabel(),
+        departureLabel: departureLocation,
       };
       const refined = await refineDestinationCandidates(
         extractedIntent.destination,
