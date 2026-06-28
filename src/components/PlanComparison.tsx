@@ -3,6 +3,7 @@ import type { TravelPlan } from '../types';
 
 interface PlanComparisonProps {
   plans: TravelPlan[];
+  departureLocation: string;
   onViewDetail: (plan: TravelPlan) => void;
   onSubmit: () => void;
 }
@@ -46,10 +47,13 @@ function PlanCard({ plan, onViewDetail }: { plan: TravelPlan; onViewDetail: () =
   );
 }
 
-function PlanComparison({ plans, onViewDetail, onSubmit }: PlanComparisonProps) {
+function PlanComparison({ plans, departureLocation, onViewDetail, onSubmit }: PlanComparisonProps) {
   return (
     <div>
       <p className="section-title">プランを見比べてみましょう</p>
+      <p className="departure-context-note">
+        ※ すべてのプランは「{departureLocation}」出発で比較しています。
+      </p>
       <div className="plan-card-row">
         {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} onViewDetail={() => onViewDetail(plan)} />

@@ -2,13 +2,15 @@ import type { TravelIntent } from '../types';
 
 interface IntentExtractionProps {
   intent: TravelIntent;
+  departureLocation: string;
   onSubmit: () => void;
 }
 
-function IntentExtraction({ intent, onSubmit }: IntentExtractionProps) {
+function IntentExtraction({ intent, departureLocation, onSubmit }: IntentExtractionProps) {
   return (
     <div>
       <p className="section-title">あなたの旅の意図</p>
+      <p className="departure-context-note">出発地：{departureLocation}</p>
 
       <div className="intent-list">
         <div className="intent-row">
