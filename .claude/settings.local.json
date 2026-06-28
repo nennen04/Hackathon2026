@@ -36,7 +36,24 @@
       "Bash(node verify-features.mjs)",
       "Bash(node verify-features2.mjs)",
       "Bash(node verify-regression.mjs)",
-      "Bash(taskkill //PID 28604 //F)"
+      "Bash(taskkill //PID 28604 //F)",
+      "Bash(curl -s -X POST http://localhost:8787/api/extract-intent -H 'Content-Type: application/json' -d '{\"freeText\":\"レンタカーで伊豆に行きたいです。海鮮を食べて、海も見て、温泉に入ってのんびりしたい。\",\"keywords\":[\"レンタカー\",\"伊豆\",\"海鮮\",\"海\",\"温泉\"],\"conditions\":{\"duration\":\"1night\",\"transport\":\"car\",\"companion\":\"couple\",\"style\":\"relax\"}}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -s -X POST http://localhost:8787/api/generate-plans -H 'Content-Type: application/json' -d '{\"intent\":{\"destination\":\"伊豆エリア\",\"purposes\":[\"海鮮\",\"温泉\",\"海\",\"のんびり\"],\"transportWish\":\"レンタカーで伊豆へ移動\",\"travelStyle\":\"カップルでゆったり過ごすドライブ旅\",\"stamina\":\"あまり歩き回らず、ゆっくり楽しみたい\",\"co2Kg\":52,\"budgetYen\":30000,\"fatigueScore\":2,\"aiComment\":\"test\"}}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -s -X POST http://localhost:8787/api/generate-plans -H 'Content-Type: application/json' -d '{\"intent\":{\"destination\":\"伊豆エリア\",\"purposes\":[\"海鮮\",\"温泉\",\"海\"],\"transportWish\":\"レンタカーで伊豆へ移動\",\"travelStyle\":\"ドライブ旅\",\"stamina\":\"あまり歩かない\",\"co2Kg\":40,\"budgetYen\":30000,\"fatigueScore\":2,\"aiComment\":\"test\"}}' -o /tmp/plan_response.json)",
+      "Bash(node -e \"const d = require\\('/tmp/plan_response.json'\\); console.log\\(d.originalPlan.name\\); console.log\\(d.originalPlan.description\\);\")",
+      "Bash(curl -s -X POST http://localhost:8787/api/generate-plans -H 'Content-Type: application/json' -d '{\"intent\":{\"destination\":\"伊豆エリア\",\"purposes\":[\"海鮮\",\"温泉\",\"海\"],\"transportWish\":\"レンタカーで伊豆へ移動\",\"travelStyle\":\"ドライブ旅\",\"stamina\":\"あまり歩かない\",\"co2Kg\":40,\"budgetYen\":30000,\"fatigueScore\":2,\"aiComment\":\"test\"}}' -o C:/Users/Dell/AppData/Local/Temp/claude/f--08coding-Hackathon2026/b43642d4-38a6-4571-8dcf-9c5460cabd2c/scratchpad/plan_response.json)",
+      "Bash(node -e \"const d = require\\('C:/Users/Dell/AppData/Local/Temp/claude/f--08coding-Hackathon2026/b43642d4-38a6-4571-8dcf-9c5460cabd2c/scratchpad/plan_response.json'\\); console.log\\(d.originalPlan.name\\); console.log\\(d.originalPlan.description\\); console.log\\(d.recommendedPlan.name\\);\")",
+      "Bash(node check_plan.mjs plan_response_1.json)",
+      "Bash(node check_plan.mjs plan_response_2.json)",
+      "Bash(node check_plan.mjs plan_response_3.json)",
+      "Bash(curl -s -X POST http://localhost:8787/api/extract-intent -H 'Content-Type: application/json' -d '{\"freeText\":\"伊豆に行きたい\",\"keywords\":[\"伊豆\"],\"conditions\":{}}' -o C:/Users/Dell/AppData/Local/Temp/claude/f--08coding-Hackathon2026/b43642d4-38a6-4571-8dcf-9c5460cabd2c/scratchpad/izu_test.json)",
+      "Bash(curl -s -X POST http://localhost:8787/api/extract-intent -H 'Content-Type: application/json' -d '{\"freeText\":\"レンタカーで伊豆に行きたいです。海鮮を食べて、海も見て、温泉に入ってのんびりしたい。\",\"keywords\":[\"レンタカー\",\"伊豆\",\"海鮮\",\"海\",\"温泉\"],\"conditions\":{\"duration\":\"1night\",\"transport\":\"car\",\"companion\":\"couple\",\"style\":\"relax\"}}' -o C:/Users/Dell/AppData/Local/Temp/claude/f--08coding-Hackathon2026/b43642d4-38a6-4571-8dcf-9c5460cabd2c/scratchpad/izu_retest.json)",
+      "Bash(curl -s -X POST http://localhost:8787/api/generate-plans -H 'Content-Type: application/json' -d '{\"intent\":__TRACKED_VAR__}' -o C:/Users/Dell/AppData/Local/Temp/claude/f--08coding-Hackathon2026/b43642d4-38a6-4571-8dcf-9c5460cabd2c/scratchpad/plan_realintent.json)",
+      "Bash(node -e ' *)",
+      "Bash(node --experimental-vm-modules -e ' *)",
+      "Bash(git check-ignore *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git add *)"
     ]
   }
 }
