@@ -1,4 +1,4 @@
-import { chatJson, type ChatMessage } from './azure';
+import { chatJson, type ChatMessage } from "./azure";
 
 export interface ExtractedIntent {
   /** AIが推測したユーザーの目的地 */
@@ -10,12 +10,12 @@ export interface ExtractedIntent {
 }
 
 const SYSTEM_PROMPT = `
-あなたは旅行AIエージェント「Ecotrip」です。
+あなたは旅行AIエージェント「Ecotrip」です。ユーザーの旅行の希望を汲みつつより近い公共交通機関で行ける代替目的地を提案することを最終的なゴールとします。
 ユーザーの旅行の要望（地名・短い説明など）から、ユーザーが旅でしたい「体験の本質」を素早く読み取り、JSONで返してください。
 
 【地名から体験を推論する例】
 - 「箱根」→ 温泉、露天風呂、絶景、海鮮、旅館
-- 「伊豆」→ 温泉、海鮮、海、ドライブ
+- 「伊豆」→ 温泉、海鮮、海
 - 「沖縄」→ 海水浴、リゾート、南国料理、シュノーケリング
 - 「京都」→ 寺社仏閣、歴史散策、和食、紅葉
 - 「鎌倉」→ 寺社、海、グルメ、歴史
@@ -39,14 +39,14 @@ export async function extractTravelIntent(
 ): Promise<ExtractedIntent> {
   const userMsg = `
 旅行の要望: "${freeText}"
-キーワード: [${keywords.join(', ')}]
-出発地・帰着地: ${conditions.departureLabel || '未設定'}
-同行者: ${conditions.companion || '未設定'}
+キーワード: [${keywords.join(", ")}]
+出発地・帰着地: ${conditions.departureLabel || "未設定"}
+同行者: ${conditions.companion || "未設定"}
 `;
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: userMsg },
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: userMsg },
   ];
 
   return await chatJson<ExtractedIntent>(messages);
