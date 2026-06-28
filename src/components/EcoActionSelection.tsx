@@ -1,6 +1,7 @@
 import { ECO_ACTIONS } from '../mockData';
 
 interface EcoActionSelectionProps {
+  planName: string;
   actionStates: Record<string, boolean>;
   onToggle: (id: string) => void;
   totalPoints: number;
@@ -15,6 +16,7 @@ const ICONS: Record<string, string> = {
 };
 
 function EcoActionSelection({
+  planName,
   actionStates,
   onToggle,
   totalPoints,
@@ -23,6 +25,7 @@ function EcoActionSelection({
   return (
     <div>
       <p className="section-title">旅をもっとエコにするアクションを選んでみましょう</p>
+      <p className="departure-context-note">選択中のプラン：{planName}</p>
 
       {ECO_ACTIONS.map((action) => {
         const on = actionStates[action.id];

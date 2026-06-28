@@ -2,6 +2,7 @@ import { FEEDBACK_HISTORY_NOTE, RATING_CATEGORIES, VISIT_HISTORY } from '../mock
 import StarRating from './StarRating';
 
 interface FeedbackFormProps {
+  planName: string;
   ratings: Record<string, number>;
   onRatingChange: (id: string, value: number) => void;
   comment: string;
@@ -12,6 +13,7 @@ interface FeedbackFormProps {
 const MAX_LENGTH = 300;
 
 function FeedbackForm({
+  planName,
   ratings,
   onRatingChange,
   comment,
@@ -21,6 +23,7 @@ function FeedbackForm({
   return (
     <div>
       <p className="section-title">この旅はいかがでしたか？</p>
+      <p className="departure-context-note">今回の旅：{planName}</p>
 
       {RATING_CATEGORIES.map((category) => (
         <div className="rating-row" key={category.id}>
@@ -55,7 +58,7 @@ function FeedbackForm({
             <span className="history-item__thumb">{item.isCurrentTrip ? '🚃' : '🚗'}</span>
             <div>
               <p className="history-item__tag">{item.label}</p>
-              <p className="history-item__name">{item.planName}</p>
+              <p className="history-item__name">{item.isCurrentTrip ? planName : item.planName}</p>
               <p className="history-item__date">{item.date}</p>
             </div>
             {item.isCurrentTrip && <span className="history-item__check">✓</span>}
